@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Hotel Concierge — Staff Assistant</title>
+
+<!-- ── PWA ── -->
+<link rel="manifest" href="./manifest.webmanifest" />
+<meta name="theme-color" content="#2C2822" />
+<link rel="icon" type="image/png" href="./icon-192.png" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="SOP Assistant" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<!-- PDF.js — lets the browser read text out of PDF files -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold:    #C8A96E;
+    --gold-lt: #E2C99A;
+    --ink:     #1A1612;
+    --stone:   #2C2822;
+    --mist:    #F5F2ED;
+    --staff:   #3D3529;
+    --border:  #DDD5C5;
+    --red:     #B04A2F;
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body:    'Inter', system-ui, sans-serif;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--ink);
+    color: var(--mist);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--stone);
+    border-bottom: 1px solid rgba(200,169,110,0.3);
+    padding: 0 24px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    gap: 16px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .brand-text h1 {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--gold-lt);
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+  }
+
+  .brand-text p {
+    font-size: 10px;
+    color: rgba(245,242,237,0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-top: 1px;
+  }
+
+  /* SOP status badge */
+  .sop-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: rgba(245,242,237,0.5);
+  }
+
+  .sop-status .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #555;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .sop-status .dot.loaded  { background: #5CB85C; box-shadow: 0 0 6px rgba(92,184,92,0.5); }
+  .sop-status .dot.error   { background: var(--red); }
+  .sop-status .dot.loading { background: var(--gold); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  
+  /* ── Layout ── */
+  .app {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  aside {
+    width: 260px;
+    background: var(--stone);
+    border-right: 1px solid rgba(200,169,110,0.15);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid rgba(200,169,110,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-header h2 {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  .sidebar-header .sop-file-name {
+    font-size: 9px;
+    color: rgba(245,242,237,0.3);
+    text-align: right;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sop-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px;
+  }
+
+  .sop-list::-webkit-scrollbar { width: 3px; }
+  .sop-list::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.15); border-radius: 4px; }
+
+  .sop-category { margin-bottom: 4px; }
+
+  .sop-category-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    color: rgba(245,242,237,0.7);
+    text-align: left;
+    font-size: 12px;
+    font-family: var(--font-body);
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s, color 0.15s;
+    font-weight: 500;
+  }
+
+  .sop-category-btn:hover { background: rgba(200,169,110,0.1); color: var(--gold-lt); }
+  .sop-category-btn .chevron { font-size: 10px; transition: transform 0.2s; }
+  .sop-category-btn.open .chevron { transform: rotate(90deg); }
+
+  .sop-items { display: none; padding: 2px 0 4px 12px; }
+  .sop-items.open { display: block; }
+
+  .sop-chip {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    color: rgba(245,242,237,0.55);
+    text-align: left;
+    font-size: 11px;
+    font-family: var(--font-body);
+    padding: 6px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    line-height: 1.4;
+  }
+
+  .sop-chip:hover { background: rgba(200,169,110,0.08); color: var(--gold-lt); }
+  .sop-chip::before { content: '›'; margin-right: 6px; color: var(--gold); opacity: 0.7; }
+
+  /* Sidebar placeholder */
+  .sop-placeholder {
+    padding: 20px 16px;
+    font-size: 11px;
+    color: rgba(245,242,237,0.25);
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  /* ── Chat ── */
+  main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: #1E1A16;
+  }
+
+  #chat-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+
+  #chat-log::-webkit-scrollbar { width: 4px; }
+  #chat-log::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.2); border-radius: 4px; }
+
+  .welcome {
+    text-align: center;
+    padding: 40px 20px;
+    opacity: 0.75;
+  }
+  .welcome .welcome-icon { font-size: 40px; margin-bottom: 12px; }
+  .welcome h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--gold-lt);
+    margin-bottom: 8px;
+  }
+  .welcome p {
+    font-size: 13px;
+    color: rgba(245,242,237,0.5);
+    line-height: 1.6;
+    max-width: 360px;
+    margin: 0 auto 6px;
+  }
+  .welcome .sop-note {
+    font-size: 11px;
+    color: rgba(200,169,110,0.5);
+    margin-top: 12px;
+  }
+
+  /* Messages */
+  .msg {
+    display: flex;
+    gap: 10px;
+    max-width: 760px;
+    animation: fadein 0.25s ease;
+  }
+  @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; } }
+
+  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+
+  .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .msg.bot  .avatar { background: var(--gold); color: var(--ink); }
+  .msg.user .avatar { background: var(--staff); color: var(--gold); border: 1px solid rgba(200,169,110,0.3); }
+
+  .bubble {
+    padding: 11px 15px;
+    border-radius: 12px;
+    font-size: 13.5px;
+    line-height: 1.65;
+    max-width: calc(100% - 44px);
+  }
+  .msg.bot .bubble {
+    background: var(--stone);
+    border: 1px solid rgba(200,169,110,0.12);
+    border-bottom-left-radius: 4px;
+    color: var(--mist);
+  }
+  .msg.user .bubble {
+    background: rgba(200,169,110,0.15);
+    border: 1px solid rgba(200,169,110,0.25);
+    border-bottom-right-radius: 4px;
+    color: var(--mist);
+  }
+
+  .bubble strong { color: var(--gold-lt); font-weight: 600; }
+  .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
+  .bubble li { margin-bottom: 4px; }
+  .bubble hr { border: none; border-top: 1px solid rgba(200,169,110,0.15); margin: 10px 0; }
+  .bubble p { margin-bottom: 6px; }
+  .bubble p:last-child { margin-bottom: 0; }
+
+  .msg-meta {
+    font-size: 10px;
+    color: rgba(245,242,237,0.3);
+    margin-top: 4px;
+  }
+  .msg.user .msg-meta { text-align: right; }
+
+  .typing-bubble {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--stone);
+    border: 1px solid rgba(200,169,110,0.12);
+    border-radius: 12px;
+    border-bottom-left-radius: 4px;
+    width: fit-content;
+  }
+  .typing-bubble span {
+    width: 7px; height: 7px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+    opacity: 0.5;
+  }
+  .typing-bubble span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-bubble span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px);opacity:1} }
+
+  /* ── Input bar ── */
+  .input-area {
+    padding: 14px 20px 18px;
+    border-top: 1px solid rgba(200,169,110,0.1);
+    background: #1E1A16;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    background: var(--stone);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 12px;
+    padding: 8px 8px 8px 16px;
+    align-items: flex-end;
+    transition: border-color 0.2s;
+  }
+  .input-row:focus-within {
+    border-color: rgba(200,169,110,0.5);
+    box-shadow: 0 0 0 3px rgba(200,169,110,0.06);
+  }
+
+  #user-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 13.5px;
+    color: var(--mist);
+    resize: none;
+    max-height: 120px;
+    line-height: 1.5;
+    padding: 4px 0;
+  }
+  #user-input::placeholder { color: rgba(245,242,237,0.3); }
+
+  #send-btn {
+    width: 36px; height: 36px;
+    background: var(--gold);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+    color: var(--ink);
+  }
+  #send-btn:hover { background: var(--gold-lt); }
+  #send-btn:active { transform: scale(0.93); }
+  #send-btn:disabled { background: rgba(200,169,110,0.25); cursor: not-allowed; }
+
+  .input-hint {
+    font-size: 10px;
+    color: rgba(245,242,237,0.2);
+    margin-top: 8px;
+    text-align: center;
+    letter-spacing: 0.04em;
+  }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--red);
+    color: white;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s, transform 0.3s;
+    z-index: 999;
+    max-width: 90%;
+    text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Drive link modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,8,6,0.7);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal-card {
+    background: var(--stone);
+    border: 1px solid rgba(200,169,110,0.25);
+    border-radius: 14px;
+    padding: 24px;
+    max-width: 440px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal-card h3 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--gold-lt);
+    margin-bottom: 8px;
+  }
+  .modal-sub {
+    font-size: 12px;
+    color: rgba(245,242,237,0.55);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .modal-sub strong { color: var(--gold-lt); }
+  .modal-input {
+    width: 100%;
+    background: var(--ink);
+    border: 1px solid rgba(200,169,110,0.25);
+    border-radius: 8px;
+    padding: 11px 13px;
+    color: var(--mist);
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .modal-input:focus { border-color: rgba(200,169,110,0.6); }
+  .modal-input::placeholder { color: rgba(245,242,237,0.25); }
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+  .modal-btn {
+    border: none;
+    border-radius: 8px;
+    padding: 9px 18px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .modal-btn.primary { background: var(--gold); color: var(--ink); }
+  .modal-btn.primary:hover { background: var(--gold-lt); }
+  .modal-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .modal-btn.ghost {
+    background: none;
+    border: 1px solid rgba(200,169,110,0.3);
+    color: rgba(245,242,237,0.7);
+  }
+  .modal-btn.ghost:hover { background: rgba(200,169,110,0.1); }
+  .modal-note {
+    font-size: 11px;
+    margin-top: 12px;
+    line-height: 1.5;
+    min-height: 14px;
+  }
+  .modal-note.err { color: var(--red); }
+  .modal-note.ok  { color: #5CB85C; }
+  .modal-note.info { color: rgba(245,242,237,0.4); }
+
+  /* ── Login overlay ── */
+  #login-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  #login-overlay.hidden { display: none; }
+  .login-box {
+    background: var(--stone);
+    border: 1px solid rgba(200,169,110,0.2);
+    border-radius: 12px;
+    padding: 32px 28px;
+    width: 100%;
+    max-width: 320px;
+    text-align: center;
+  }
+  .login-box .brand-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+    margin: 0 auto 14px;
+  }
+  .login-box h1 {
+    font-family: var(--font-display);
+    font-size: 18px;
+    color: var(--gold-lt);
+    margin-bottom: 6px;
+  }
+  .login-box p {
+    font-size: 12px;
+    color: rgba(245,242,237,0.5);
+    margin-bottom: 18px;
+  }
+  .login-box input {
+    width: 100%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(200,169,110,0.25);
+    border-radius: 8px;
+    padding: 11px 13px;
+    color: var(--mist);
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 12px;
+  }
+  .login-box input:focus { border-color: rgba(200,169,110,0.6); }
+  .login-box button {
+    width: 100%;
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+  }
+  .login-box button:hover { background: var(--gold-lt); }
+  .login-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .login-box .login-error {
+    color: var(--red);
+    font-size: 12px;
+    min-height: 16px;
+    margin-top: 10px;
+  }
+
+  #app-root.hidden { display: none; }
+  #app-root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    flex: 1;
+    overflow: hidden;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Login overlay ── -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="brand-icon">🏨</div>
+    <h1>Staff Sign In</h1>
+    <p>Enter the staff access password to continue.</p>
+    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
+    <button id="login-btn">Sign In</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app-root" class="hidden">
+
+<header>
+  <div class="brand">
+    <div class="brand-icon">🏨</div>
+    <div class="brand-text">
+      <h1>Hotel Staff Assistant</h1>
+      <p>Standard Operating Procedures</p>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="upload-btn" id="install-btn" title="Install this app" style="display:none">
+      ⬇️ <span>Install</span>
+    </button>
+    <div class="sop-status">
+      <div class="dot loading" id="sop-dot"></div>
+      <span id="sop-label">Loading SOP…</span>
+    </div>
+  </div>
+</header>
+
+<div class="app">
+  <aside>
+    <div class="sidebar-header">
+      <h2>SOP Quick Topics</h2>
+      <span class="sop-file-name" id="sop-file-label">—</span>
+    </div>
+    <div class="sop-list" id="sop-list">
+      <div class="sop-placeholder">Loading topics from SOP file…</div>
+    </div>
+  </aside>
+
+  <main>
+    <div id="chat-log">
+      <div class="welcome">
+        <div class="welcome-icon">🤝</div>
+        <h2>Good day, team member</h2>
+        <p>Ask me anything about hotel procedures — check-in, housekeeping, F&amp;B, guest complaints, safety, and more.</p>
+        <p class="sop-note" id="sop-welcome-note">⏳ Loading your SOP document…</p>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="user-input" rows="1" placeholder="Ask about a hotel procedure…" maxlength="1000"></textarea>
+        <button id="send-btn" title="Send">➤</button>
+      </div>
+      <p class="input-hint">Press Enter to send · Shift+Enter for new line</p>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+</div><!-- /#app-root -->
+
+<script>
+// ╔══════════════════════════════════════════════════════════════════╗
+// ║              ★  CONFIGURATION — EDIT HERE  ★                   ║
+// ╠══════════════════════════════════════════════════════════════════╣
+// ║  The Gemini API key now lives on the SERVER (server.js / .env).  ║
+// ║  This page calls POST /api/chat instead of calling Gemini        ║
+// ║  directly, so the key is never exposed to the browser.           ║
+// ║                                                                   ║
+// ║  1. Set SOP_FILE_PATH to the relative or absolute path of       ║
+// ║     your SOP file. PDF, TXT and MD are all supported.          ║
+// ║     Examples:                                                   ║
+// ║       './sop/hotel-sop.pdf'   ← PDF is now supported           ║
+// ║       './sop/hotel-sop.txt'                                     ║
+// ║       './sop/hotel-sop.md'                                      ║
+// ║     The file must be accessible from the same server/origin.   ║
+// ║                                                                 ║
+// ║  ── OR ──  just click "Upload SOP" in the top bar to load a    ║
+// ║     PDF / text file straight from your computer (works even    ║
+// ║     when opening this HTML file directly, no server needed).   ║
+// ╚══════════════════════════════════════════════════════════════════╝
+
+// ── SOP SOURCE — choose ONE primary source ───────────────────────
+// The app tries them in this order: Google Drive → local file → built-in.
+//
+// (A) GOOGLE DRIVE  (recommended for sharing one SOP with all staff)
+//     1. Upload your SOP PDF to Google Drive.
+//     2. Share it as "Anyone with the link → Viewer".
+//     3. Paste that share link into GDRIVE_SOP_URL below.
+//     4. Create a Google API key with the "Drive API" enabled
+//        (console.cloud.google.com → APIs & Services) and paste it
+//        into GOOGLE_DRIVE_API_KEY below.
+//     Leave GDRIVE_SOP_URL empty ('') to skip Drive.
+//     NOTE: this key only grants read access to public Drive files —
+//     it's a different key from your Gemini key and is lower-risk to
+//     keep client-side, but you can also move it server-side later
+//     the same way the Gemini key was moved.
+const GDRIVE_SOP_URL      = 'https://drive.google.com/file/d/1tqUU7j5MUOylljwogaWBy2xfo7ZRioi7/view?usp=sharing';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
+const GOOGLE_DRIVE_API_KEY = 'AIzaSyB4kizpSH2DiJB7LQ3iNYGC2DwFn6t9ku8';  // e.g. 'AIzaSy...'
+
+
+// (B) LOCAL FILE — a PDF/TXT/MD sitting in the SAME FOLDER as this HTML.
+//     Used only if GDRIVE_SOP_URL is empty. './' = next to this file.
+const SOP_FILE_PATH  = './Part I SOP LeGreen-0626.pdf';
+
+// Point PDF.js at its worker (required for parsing PDFs in the browser)
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ── Optional: override the sidebar quick-topic menu. ──────────────
+// If null, the sidebar is auto-generated from SOP headings.
+// Or supply your own structure: { "Category": ["topic1", "topic2"] }
+const SIDEBAR_TOPICS = null;
+
+// ── Fallback SOP used if the file cannot be loaded ────────────────
+// This keeps the chatbot functional even without a file.
+const FALLBACK_SOP = `
+HOTEL STANDARD OPERATING PROCEDURES
+
+== CHECK-IN & CHECK-OUT ==
+1. Greet guest warmly within 30 seconds of arrival.
+2. Verify reservation via name, booking reference, or ID.
+3. Confirm room type, rate, and length of stay.
+4. Collect payment method and take pre-authorisation if required.
+5. Issue key cards and explain hotel facilities (pool, restaurant hours, Wi-Fi).
+6. For early check-in (before 14:00): check availability; charge if applicable or offer luggage storage.
+7. For late check-out (after 12:00): check availability; standard charge applies beyond 14:00.
+8. At check-out, retrieve key cards, print/email folio, and process payment.
+9. Escalate billing disputes to Duty Manager.
+
+== HOUSEKEEPING ==
+1. Begin cleaning from the top floor downward.
+2. Knock and announce "Housekeeping" twice before entering.
+3. Do Not Disturb (DND): never enter a room displaying DND; log and skip.
+4. Room sequence: open windows → strip bed → clean bathroom → vacuum → replace amenities → make bed → final check.
+5. Turndown service: tidy room, fold duvet corner, place slippers, add evening amenity, close curtains, dim lights.
+6. Lost & found: bag item with room number, date, description; log in system; hand to Housekeeping Supervisor.
+7. Minibar: record consumption on room folio; restock and initial checklist.
+8. Report maintenance issues (leaks, broken fixtures) to Engineering immediately.
+
+== FRONT DESK & RESERVATIONS ==
+1. Answer phone within 3 rings: "Good [morning/afternoon], [Hotel Name], [Name] speaking, how may I assist you?"
+2. Reservation modifications: verify identity, note changes in PMS, send updated confirmation.
+3. No-show policy: charge first night unless waived by Manager; release room after midnight.
+4. Overbooking: walk guest to comparable hotel, cover transport cost, call next day to apologise — escalate to Manager.
+5. VIP arrivals: pre-block best available room, amenity in room, General Manager card placed on desk.
+6. Wake-up calls: confirm time twice, set in system, call front desk if no answer on second attempt.
+
+== FOOD & BEVERAGE ==
+1. Room service orders: repeat order back to guest, confirm delivery time (target 30 min), deliver with receipt.
+2. Food allergies: flag on ticket in RED, notify kitchen immediately, confirm with Chef before service.
+3. Complimentary policy: F&B comps require Duty Manager approval above USD 20 value.
+4. Alcohol service: do not serve visibly intoxicated guests; request ID if age uncertain; log refusals.
+5. Minibar billing dispute: review housekeeping checklist; if unclear, waive charge and report to F&B Manager.
+
+== GUEST COMPLAINTS & SERVICE RECOVERY ==
+1. Listen without interrupting; thank guest for feedback.
+2. Apologise sincerely — do not assign blame.
+3. Offer an immediate solution; escalate if outside your authority.
+4. Document complaint in guest profile and log system.
+5. Follow up within 2 hours to confirm resolution.
+6. Compensation authority: Front Desk — complimentary amenity; Supervisor — room upgrade or F&B credit; Manager — rate adjustment or free night.
+7. Escalate any threat, aggression, or unresolved complaint to Duty Manager immediately.
+
+== SAFETY & SECURITY ==
+1. Fire evacuation: activate alarm → call 119 → use fire exits (never elevator) → assemble at designated muster point → account for all guests.
+2. Medical emergency: call 119 first, then Duty Manager; retrieve first-aid kit; do not move injured person unless in immediate danger.
+3. Suspicious person: do not confront; note description; alert Security and Duty Manager.
+4. Lost passport: secure in safe; log in Lost & Found; notify local authority if unclaimed after 24 h.
+5. Incident report: complete within 1 hour; submit to Security Manager and GM.
+6. CCTV: footage requests require written authorisation from GM; never share externally without legal clearance.
+
+== CONCIERGE & GUEST SERVICES ==
+1. Airport transfers: book minimum 3 hours prior; confirm vehicle type, flight number, meet-and-greet sign.
+2. Luggage storage: tag with guest name, room/reservation number, item count; issue claim ticket.
+3. Business centre: available 07:00–22:00; printing charged to room; assist with courier bookings.
+4. Pets: not permitted unless pre-approved by GM; designated relief area on Level B1.
+
+== GROOMING & CONDUCT ==
+1. Full uniform worn at all times on duty; name badge on left lapel.
+2. Hair neatly groomed; no strong perfume; nails clean and trimmed.
+3. Mobile phones: personal use prohibited on the floor; emergency calls in back office only.
+4. Social media: never post guest information, photos of property operations, or internal communications.
+5. Confidentiality: guest names, room numbers, and stay details are strictly private — never share with third parties.
+`;
+
+// ═══════════════════════════════════════════════════════════════════
+//   END OF CONFIGURATION — no need to edit below this line
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Default sidebar (used if SIDEBAR_TOPICS is null and auto-parse fails) ──
+const DEFAULT_SIDEBAR = {
+  "Pendahuluan": [
+   "Definisi SOP", "Tujuan SOP","Manfaat SOP", "Format & Akses SOP","Pengembangan & Revisi SOP",
+   "Pengawasan, Monitoring, dan Evaluasi", "Ketentuan Pengawasan",
+  ],
+  "ORGANISASI & PROFIL PERUSAHAAN": [
+    "Profil Perusahaan", "Sejarah & Perkembangan", "Visi, Misi, dan Nilai", 
+    "Falsafah & Karakter Dasar", "Deskripsi Brand & Personality", "Bisnis Utama LeGreen",
+    "Sistem Manajemen & Struktur Organisasi", "Konsep & Rumus Bisnis",
+  ],
+  "Standar Profesional": [
+    "Standar Perilaku Staf", "Standar Penampilan & Grooming", "Standar Menjawab Telepon",
+    "Pencegahan & Penanganan Kekerasan terhadap Staf",
+    "Call Tree", "Whistleblower / Pelaporan Pelanggaran",
+  ],
+  "FRONT OFFICE": [
+    "Check-In", "Deposit Kamar", "Metode Pembayaran", "Group Check-In", "Check-Out", 
+    "Check-Out Longstay & Serviced Office", "Early Check-In / Late Check-Out", "Tamu Asing",
+    "Tamu OTA & Travel Agent", "Tamu Guarantee Letter", "Tamu Blacklist & Penolakan", 
+    "Barang Dilarang", "Penerimaan Paket Tamu", "Refund", "Upselling", "Penitipan Barang",
+  ],
+  "HOUSEKEEPING": [
+    "Tanggung Jawab", "Kebersihan Harian Kamar", "Persiapan Kamar Siap Jual", 
+    "Making Bed", "Pembersihan Kamar Mandi", "Menyapu & Mengepel", 
+    "Membersihkan Kaca & Stainless", "Pengecekan Final Kamar", "Tampilan Meja Kamar",
+    "Keytag Do Not Disturb / Make Up Room", "Public Area — Lobby & Koridor", 
+    "Public Area — Toilet Umum", "Public Area — Lift, Tangga Darurat, Furniture",
+    "General Cleaning / Deep Cleaning", "Inventory & Pengelolaan Linen",
+    "Pertolongan Pertama Linen Noda", "Housekeeping Serviced Office",
+  ],
+  "MAINTENANCE": [
+    "Pemeliharaan Rutin", "Peralatan Area Publik yang Dipantau", "Peralatan Kamar Tamu",
+    "Minor Maintenance — Panduan Lokasi", "Instalasi Listrik", 
+    "Pemadaman PLN — Menyalakan Genset", "Instalasi Air", "Sistem TV", "Internet / WiFi",
+    "Exhaust Fan", "Filter Air", "Pengecekan Genset Mingguan", 
+    "Kartu Akses — Penggantian Baterai",
+  ],
+  "BREAKFAST & LAUNDRY": [
+    "Persiapan Area Breakfast", "Persiapan Makanan & Minuman", "Kontrol Stok Breakfast",
+    "Pengelolaan Linen & Laundry",
+  ],
+  "IT, SECURITY & EMERGENCY": [
+    "Pengelolaan Jaringan & WiFi", "Pemeliharaan Perangkat Keras ",
+    "Penanganan Masalah Teknologi", "Disaster Recovery (Pemulihan Bencana IT)", 
+    "Patroli Security", "Keamanan Serviced Office", "Pencatatan Laporan Kehilangan",
+    "Penanganan Kebakaran & Bencana Alam",
+  ],
+  "HOTEL MANAGER (HM)": [
+    "Fungsi & Struktur Pelaporan", "Jam Kerja & Tata Tertib", "Kompensasi & Benefit",
+    "Penilaian Kinerja (KPI)", "Tanggung Jawab — Strategi & SOP", 
+    "Tanggung Jawab — Human Resources", "Tanggung Jawab — Operasional", 
+    "Tanggung Jawab — Marketing & Sales", "Tanggung Jawab — Keuangan & Administrasi",
+    "Penanganan Komplain Tamu",
+  ],
+  "DIVISI OPERATOR (PUSAT)": [
+    "Rekrutmen & Seleksi", "Performance Appraisal", "Reward Kinerja Tahunan", "Staf Outsourcing",
+    "Absensi & Cuti", "BPJS Kesehatan", "Corporate Event & CSR", "Channel Management & OTA",
+    "Pricing & Diskon", "Marketing Digital & Promosi", "Marketing Intelligent", 
+    "EVOC (Tim Pengecekan Lapangan)", "Room Maintenance", "Jadwal Perawatan Rutin (Ringkasan)",
+    "Pest Control", "Renovasi & Perawatan Sipil", "Jadwal Staf EVOC / Maintenance Harian",
+    "SOP & Business Plan", "Monitoring & Pelaporan", "Komunikasi Internal", 
+    "Inisiatif & Efisiensi", "Perluasan Bisnis", "Kompensasi & Benefit", "Audit Internal",
+    "Audit Stok Minuman Berbayar", "Audit Data Kunci", "Konsolidasi Harian", 
+    "Deposit & Refund", "Pajak", "Cash Flow", "Laporan Shareholder / Investor", "Petty Cash",
+    "Purchasing", "Struktur Biaya Penjualan (Fee)", "Asuransi", "Cost Controlling",
+  ],
+};
+
+// ─── State ──────────────────────────────────────────────────────────
+let sopContent    = '';
+let chatHistory   = [];
+let isLoading     = false;
+
+// ─── DOM refs ───────────────────────────────────────────────────────
+const chatLog    = document.getElementById('chat-log');
+const userInput  = document.getElementById('user-input');
+const sendBtn    = document.getElementById('send-btn');
+const toast      = document.getElementById('toast');
+const sopDot     = document.getElementById('sop-dot');
+const sopLabel   = document.getElementById('sop-label');
+const sopFileLabel = document.getElementById('sop-file-label');
+const sopWelcomeNote = document.getElementById('sop-welcome-note');
+const installBtn     = document.getElementById('install-btn');
+
+// ─── Extract text from a PDF (ArrayBuffer) using PDF.js ─────────────
+async function extractPdfText(arrayBuffer) {
+  if (!window.pdfjsLib) {
+    throw new Error('PDF reader failed to load (check your internet connection).');
+  }
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page    = await pdf.getPage(p);
+    const content = await page.getTextContent();
+
+    // Rebuild lines from text-item positions so the layout is preserved
+    let lines = [];
+    let line  = '';
+    let lastY = null;
+
+    for (const item of content.items) {
+      const y = item.transform[5];
+      if (lastY !== null && Math.abs(y - lastY) > 3) {
+        lines.push(line.trim());
+        line = '';
+      }
+      line += item.str;
+      if (item.hasEOL) { lines.push(line.trim()); line = ''; }
+      lastY = y;
+    }
+    if (line.trim()) lines.push(line.trim());
+
+    fullText += lines.join('\n') + '\n\n';
+  }
+
+  return fullText.trim();
+}
+
+// ─── Google Drive helpers ───────────────────────────────────────────
+// Pull the file ID out of the many Google Drive URL shapes.
+function extractDriveId(url) {
+  if (!url) return null;
+  url = url.trim();
+  let m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);   // /file/d/ID/view
+  if (m) return m[1];
+  m = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);            // ?id=ID / open?id=ID
+  if (m) return m[1];
+  m = url.match(/\/d\/([a-zA-Z0-9_-]+)/);              // /d/ID
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(url)) return url;    // raw ID pasted
+  return null;
+}
+
+// Download a Drive PDF via the Drive API (sends CORS headers) and extract text.
+async function loadFromDrive(shareUrl, apiKey) {
+  const id = extractDriveId(shareUrl);
+  if (!id) throw new Error('That doesn\'t look like a Google Drive link — couldn\'t find a file ID.');
+  if (!apiKey) throw new Error('No Google Drive API key set. Add GOOGLE_DRIVE_API_KEY in the config.');
+
+  const url = `https://www.googleapis.com/drive/v3/files/${id}?alt=media&key=${encodeURIComponent(apiKey)}`;
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    if (res.status === 403) throw new Error('Access denied (403). Share the file as "Anyone with the link" and make sure the Drive API is enabled for your key.');
+    if (res.status === 404) throw new Error('File not found (404). Check the link is correct and still shared.');
+    if (res.status === 400) throw new Error('Bad request (400). The API key may be invalid.');
+    throw new Error(`Google Drive returned HTTP ${res.status}.`);
+  }
+
+  const buf = await res.arrayBuffer();
+  // Guard: if Drive returned an HTML error page instead of a PDF.
+  const head = new Uint8Array(buf.slice(0, 5));
+  const sig  = String.fromCharCode(...head);
+  if (!sig.startsWith('%PDF')) {
+    // Could be a text/markdown file shared from Drive — try decoding as text.
+    const asText = new TextDecoder().decode(buf);
+    if (/<html|<!doctype/i.test(asText.slice(0, 200))) {
+      throw new Error('Drive returned a web page, not a file. Re-check sharing settings.');
+    }
+    return asText;
+  }
+  return await extractPdfText(buf);
+}
+
+// ─── Load SOP (Drive → local file → built-in fallback) ──────────────
+async function loadSOP() {
+  // (A) Google Drive, if configured
+  if (GDRIVE_SOP_URL && GDRIVE_SOP_URL.trim()) {
+    sopDot.className = 'dot loading';
+    sopLabel.textContent = 'Loading SOP from Google Drive…';
+    sopFileLabel.textContent = 'Google Drive';
+    try {
+      const text = await loadFromDrive(GDRIVE_SOP_URL, GOOGLE_DRIVE_API_KEY);
+      if (!text.trim()) throw new Error('No readable text found in the Drive file.');
+      applyLoadedSOP(text, 'Google Drive SOP');
+      return;
+    } catch (err) {
+      console.warn('Drive load failed:', err.message);
+      sopWelcomeNote.textContent = `⚠️ Google Drive load failed: ${err.message}`;
+      // fall through to local file / fallback
+    }
+  }
+
+  // (B) Local file in the same folder
+  const fileName = SOP_FILE_PATH.split('/').pop();
+  sopFileLabel.textContent = fileName;
+  const isPdf = /\.pdf$/i.test(SOP_FILE_PATH);
+
+  try {
+    const res = await fetch(encodeURI(SOP_FILE_PATH));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    let text;
+    if (isPdf) {
+      const buf = await res.arrayBuffer();
+      text = await extractPdfText(buf);
+    } else {
+      text = await res.text();
+    }
+    if (!text.trim()) throw new Error('File is empty or no readable text found');
+
+    applyLoadedSOP(text, fileName);
+
+  } catch (err) {
+    console.warn('SOP file not loaded:', err.message, '— using built-in fallback.');
+    sopContent = FALLBACK_SOP;
+    sopDot.className  = 'dot error';
+    sopLabel.textContent = `Built-in SOP (couldn't auto-load file)`;
+    sopWelcomeNote.textContent = `ℹ️ Using built-in SOP (couldn't auto-load the configured SOP file).`;
+    buildSidebarFromSOP(FALLBACK_SOP);
+  }
+}
+
+// ─── Apply a successfully loaded SOP to state + UI ──────────────────
+function applyLoadedSOP(text, fileName) {
+  sopContent = text;
+  sopDot.className = 'dot loaded';
+  sopLabel.textContent = `SOP loaded · ${fileName}`;
+  sopFileLabel.textContent = fileName;
+  sopWelcomeNote.textContent = `✅ SOP loaded from "${fileName}" — ready to assist.`;
+  buildSidebarFromSOP(text);
+}
+
+// ─── Parse SOP headings for sidebar ────────────────────────────────
+function buildSidebarFromSOP(text) {
+  const container = document.getElementById('sop-list');
+  container.innerHTML = '';
+
+  let topics;
+
+  if (SIDEBAR_TOPICS) {
+    topics = SIDEBAR_TOPICS;
+  } else {
+    // Try to auto-extract == HEADINGS == and sub-items from the SOP text
+    topics = parseSopTopics(text);
+    if (Object.keys(topics).length === 0) topics = DEFAULT_SIDEBAR;
+  }
+
+  for (const [cat, items] of Object.entries(topics)) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sop-category';
+
+    const btn = document.createElement('button');
+    btn.className = 'sop-category-btn';
+    btn.innerHTML = `<span>${cat}</span><span class="chevron">›</span>`;
+
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'sop-items';
+
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('open');
+      itemsDiv.classList.toggle('open');
+    });
+
+    items.forEach(item => {
+      const chip = document.createElement('button');
+      chip.className = 'sop-chip';
+      chip.textContent = item;
+      chip.addEventListener('click', () => {
+        userInput.value = `Apa SOP untuk: ${item}?`;
+        userInput.focus();
+        autoResize();
+      });
+      itemsDiv.appendChild(chip);
+    });
+
+    wrapper.appendChild(btn);
+    wrapper.appendChild(itemsDiv);
+    container.appendChild(wrapper);
+  }
+}
+
+// Parse sections from plain-text SOP (== HEADING == or # Heading format)
+function parseSopTopics(text) {
+  const result = {};
+  const lines  = text.split('\n');
+  let currentSection = null;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    // Match headings like:  == SECTION ==  or  # Section  or  ## Section
+    const h1 = line.match(/^==\s*(.+?)\s*==$/);
+    const h2 = line.match(/^#{1,3}\s+(.+)$/);
+
+    if (h1 || h2) {
+      const title = (h1 || h2)[1].replace(/[_*`]/g, '').trim();
+      // Title-case it nicely
+      currentSection = title.split(' ').map(w =>
+        w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+      ).join(' ');
+      result[currentSection] = [];
+      continue;
+    }
+
+    // Extract numbered steps as quick topics (take first ~6 per section)
+    if (currentSection && result[currentSection].length < 8) {
+      const step = line.match(/^\d+\.\s+(.+)/);
+      if (step) {
+        // Trim to a short label
+        let label = step[1].replace(/\*\*/g, '').trim();
+        const colon = label.indexOf(':');
+        if (colon > 0 && colon < 40) label = label.slice(0, colon);
+        if (label.length > 55) label = label.slice(0, 52) + '…';
+        result[currentSection].push(label);
+      }
+    }
+  }
+
+  // Remove empty sections
+  for (const k of Object.keys(result)) {
+    if (result[k].length === 0) delete result[k];
+  }
+
+  return result;
+}
+
+// ─── Backend chat call (server holds the Gemini API key) ────────────
+async function callGemini(userMessage) {
+  const systemPrompt = `You are "Aria", the AI-powered SOP Assistant for a professional 5-star hotel. You help hotel staff by providing clear, practical, step-by-step guidance based strictly on the hotel's Standard Operating Procedures document provided below.
+
+HOTEL SOP DOCUMENT:
+---
+${sopContent}
+---
+
+YOUR ROLE:
+- Answer staff questions using ONLY the SOP document above as your primary source.
+- If the question is covered in the SOP, give a precise step-by-step answer referencing the relevant section.
+- If the topic is NOT in the SOP, you may use general 5-star hotel best practices but clearly note: "⚠️ This topic is not in your SOP — the following is general best practice."
+- Always prioritise guest safety and satisfaction.
+- Tell staff when to involve a supervisor or manager.
+- Be warm, professional, and concise.
+- Answer the question in Indonesian language
+
+RESPONSE FORMAT:
+- Use **bold** for section titles or key terms.
+- Use numbered lists for step-by-step procedures.
+- Use bullet points for notes or reminders.
+- End complex answers with a "💡 Key Reminder" tip.
+- State "⚠️ Escalate to Supervisor/Manager" when required.
+- For medical emergencies: always say call emergency services (119 in Indonesia) first.
+
+SCOPE: Only answer questions related to hotel operations, guest services, or staff conduct.`;
+
+  const contents = [];
+  for (const turn of chatHistory) {
+    contents.push({
+      role: turn.role === 'user' ? 'user' : 'model',
+      parts: [{ text: turn.content }]
+    });
+  }
+  contents.push({ role: 'user', parts: [{ text: userMessage }] });
+
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ systemPrompt, contents })
+  });
+
+  if (res.status === 401) {
+    // Session expired — send back to login
+    showLogin();
+    throw new Error('Session expired. Please sign in again.');
+  }
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data?.error || `HTTP ${res.status}`);
+  }
+
+  if (!data.text) throw new Error('Empty response from server.');
+  return data.text;
+}
+
+// ─── UI helpers ──────────────────────────────────────────────────────
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 4500);
+}
+
+function autoResize() {
+  userInput.style.height = 'auto';
+  userInput.style.height = Math.min(userInput.scrollHeight, 120) + 'px';
+}
+
+function ts() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatBotText(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ol>$1</ol>')
+    .replace(/^[•\-] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, m => m.includes('<ol>') ? m : `<ul>${m}</ul>`)
+    .replace(/---/g, '<hr>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^([^<].*)$/m, '<p>$1</p>');
+}
+
+function escapeHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function appendMessage(role, text) {
+  const welcome = chatLog.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const wrap   = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = role === 'bot' ? '🏨' : '👤';
+
+  const inner  = document.createElement('div');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = role === 'bot' ? formatBotText(text) : escapeHtml(text);
+
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta';
+  meta.textContent = (role === 'bot' ? 'Aria · ' : 'You · ') + ts();
+
+  inner.appendChild(bubble);
+  inner.appendChild(meta);
+  wrap.appendChild(avatar);
+  wrap.appendChild(inner);
+  chatLog.appendChild(wrap);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function showTyping() {
+  const welcome = chatLog.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  const wrap = document.createElement('div');
+  wrap.className = 'msg bot';
+  wrap.id = 'typing-indicator';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = '🏨';
+
+  const tb = document.createElement('div');
+  tb.className = 'typing-bubble';
+  tb.innerHTML = '<span></span><span></span><span></span>';
+
+  wrap.appendChild(avatar);
+  wrap.appendChild(tb);
+  chatLog.appendChild(wrap);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+// ─── Send message ─────────────────────────────────────────────────
+async function sendMessage() {
+  if (isLoading) return;
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  isLoading = true;
+  sendBtn.disabled = true;
+  userInput.value = '';
+  autoResize();
+
+  appendMessage('user', text);
+  chatHistory.push({ role: 'user', content: text });
+  showTyping();
+
+  try {
+    const reply = await callGemini(text);
+    removeTyping();
+    appendMessage('bot', reply);
+    chatHistory.push({ role: 'assistant', content: reply });
+    if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
+  } catch (err) {
+    removeTyping();
+    showToast(err.message);
+    appendMessage('bot', `⚠️ ${err.message}`);
+  }
+
+  isLoading = false;
+  sendBtn.disabled = false;
+  userInput.focus();
+}
+
+// ─── Event listeners ──────────────────────────────────────────────
+sendBtn.addEventListener('click', sendMessage);
+
+userInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+userInput.addEventListener('input', autoResize);
+
+
+// ── PWA install prompt ──
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBtn.style.display = 'flex';
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  installBtn.style.display = 'none';
+});
+window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+
+// ── Register the service worker (enables offline + installability) ──
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch(err => console.warn('Service worker registration failed:', err));
+  });
+}
+
+// ─── Auth / Login ─────────────────────────────────────────────────
+const loginOverlay = document.getElementById('login-overlay');
+const appRoot      = document.getElementById('app-root');
+const loginInput   = document.getElementById('login-password');
+const loginBtn     = document.getElementById('login-btn');
+const loginError   = document.getElementById('login-error');
+
+function showLogin() {
+  appRoot.classList.add('hidden');
+  loginOverlay.classList.remove('hidden');
+  loginInput.value = '';
+  loginError.textContent = '';
+  loginInput.focus();
+}
+
+function showApp() {
+  loginOverlay.classList.add('hidden');
+  appRoot.classList.remove('hidden');
+  loadSOP();
+}
+
+async function attemptLogin() {
+  const password = loginInput.value;
+  if (!password) return;
+
+  loginBtn.disabled = true;
+  loginError.textContent = '';
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      loginError.textContent = data?.error || 'Incorrect password.';
+      loginInput.value = '';
+      loginInput.focus();
+      return;
+    }
+
+    showApp();
+  } catch (err) {
+    loginError.textContent = 'Could not reach server. Try again.';
+  } finally {
+    loginBtn.disabled = false;
+  }
+}
+
+loginBtn.addEventListener('click', attemptLogin);
+loginInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); attemptLogin(); }
+});
+
+// ─── Init ─────────────────────────────────────────────────────────
+(async function init() {
+  try {
+    const res = await fetch('/api/session', { credentials: 'same-origin' });
+    const data = await res.json().catch(() => ({ authenticated: false }));
+    if (data.authenticated) {
+      showApp();
+    } else {
+      showLogin();
+    }
+  } catch (err) {
+    showLogin();
+  }
+})();
+
+</script>
+</body>
+</html>
