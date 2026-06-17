@@ -1269,28 +1269,20 @@ function formatBotText(text) {
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 
-    // ✅ split title + description
+    // numbered sections
     .replace(
-      /^• ([^\.]+)\.\s*(.+)$/gm,
-      '<li><strong>$1.</strong><br>$2</li>'
+      /^(\d+)\.\s*(.+?):/gm,
+      '<div class="section"><strong>$1. $2:</strong></div>'
     )
+   
+    // bullets
+    .replace(/^\*\s+(.+)$/gm, '<div class="bullet">• $1</div>')
 
-    // fallback simple section
-    .replace(
-      /^• (.+)$/gm,
-      '<li><strong>$1</strong></li>'
-    )
+    // keep line breaks
+    .replace(/\n/g, '<br>')
 
-    // bullet items
-    .replace(/^\* (.+)$/gm, '<li>$1</li>')
-
-    // wrap lists
-    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
-    .replace(/<\/ul>\s*<ul>/g, '')
-
-    // cleanup
-    .replace(/\n/g, '')
-    .replace(/<p>\s*<\/p>/g, '');
+    // remove excessive breaks
+    .replace(/(<br>\s*){2,}/g, '<br>');
 }
 
 function escapeHtml(t) {
