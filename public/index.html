@@ -20,7 +20,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --gold:    #15803D;
+    --green:    #15803D;
     --gold-lt: #1FA34F;
     --gold-text: #166534;
     --ink:     #FFFFFF;
@@ -124,7 +124,7 @@
   }
   .sop-status .dot.loaded  { background: #5CB85C; box-shadow: 0 0 6px rgba(92,184,92,0.5); }
   .sop-status .dot.error   { background: var(--red); }
-  .sop-status .dot.loading { background: var(--gold); animation: pulse 1s infinite; }
+  .sop-status .dot.loading { background: var(--green); animation: pulse 1s infinite; }
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -383,7 +383,7 @@
   }
   .typing-bubble span {
     width: 7px; height: 7px;
-    background: var(--gold);
+    background: var(--green);
     border-radius: 50%;
     animation: bounce 1.2s infinite;
     opacity: 0.5;
@@ -432,7 +432,7 @@
 
   #send-btn {
     width: 36px; height: 36px;
-    background: var(--gold);
+    background: var(--green);
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -541,7 +541,7 @@
     cursor: pointer;
     transition: background 0.15s, opacity 0.15s;
   }
-  .modal-btn.primary { background: var(--gold); color: var(--ink); }
+  .modal-btn.primary { background: var(--green); color: var(--ink); }
   .modal-btn.primary:hover { background: var(--gold-lt); }
   .modal-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .modal-btn.ghost {
@@ -612,7 +612,7 @@
   .login-box input:focus { border-color: rgba(46,184,46,0.6); }
   .login-box button {
     width: 100%;
-    background: var(--gold);
+    background: var(--green);
     color: var(--ink);
     border: none;
     border-radius: 8px;
