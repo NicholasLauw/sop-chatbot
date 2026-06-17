@@ -1274,6 +1274,7 @@ function formatBotText(text) {
     .replace(/(<li>[\s\S]*?<\/li>)/g, m => m.includes('<ol>') ? m : `<ul>${m}</ul>`)
     .replace(/---/g, '<hr>')
     .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>')
     .replace(/^([^<].*)$/m, '<p>$1</p>');
 }
 
