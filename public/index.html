@@ -1256,7 +1256,7 @@ SCOPE: Only answer questions related to hotel operations, guest services, or sta
   }
 
   if (!data.text) throw new Error('Empty response from server.');
-  return data.text;
+  return { text: data.text, truncated: !!data.truncated };
 }
 
 // ─── UI helpers ──────────────────────────────────────────────────────
@@ -1374,9 +1374,9 @@ async function sendMessage() {
   showTyping();
 
   try {
-    const reply = await callGemini(text);
+    const { text: reply, truncated } = await callGemini(text);
     removeTyping();
-    appendMessage('bot', reply);
+    appendMessage('bot', reply + (truncated ? '\n\n⚠️ *Jawaban terpotong karena terlalu panjang — coba tanyakan bagian yang lebih spesifik.*' : ''));
     chatHistory.push({ role: 'assistant', content: reply });
     if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
   } catch (err) {
