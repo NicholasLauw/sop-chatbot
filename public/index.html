@@ -345,7 +345,10 @@
   }
  
   .bubble .section {
-    margin: 8px 0 4px;
+    margin: 18px 0 6px;
+  }
+  .bubble .section:first-child {
+    margin-top: 0;
   }
   
   .bubble .bullet {
@@ -1277,14 +1280,18 @@ function ts() {
 
 function formatBotText(text) {
   return text
+    // numbered section headers, e.g. "16. Allotment & Pricing" or "12. Cuti:"
+    // (model may or may not wrap these in ** itself — strip stray ** either way).
+    // Distinguished from numbered procedure steps (e.g. "1. Monitoring tabel...")
+    // by NOT ending in a period, since headers are short titles, not full sentences.
+    .replace(
+      /^\*{0,2}(\d+)\.\s+([^\n.:]+?)\*{0,2}(:)?\s*$/gm,
+      '<div class="section"><strong>$1. $2$3</strong></div>'
+    )
+
+    // remaining inline bold (e.g. "**Tujuan:**" inside a bullet line)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 
-    // numbered sections
-    .replace(
-      /^(\d+)\.\s*(.+?):/gm,
-      '<div class="section"><strong>$1. $2:</strong></div>'
-    )
-   
     // bullets
     .replace(/^\*\s+(.+)$/gm, '<div class="bullet">• $1</div>')
 
