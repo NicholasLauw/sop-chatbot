@@ -1269,20 +1269,27 @@ function formatBotText(text) {
   return text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
 
-    // section titles
-    .replace(/^• (.+)$/gm, '<li><strong>$1</strong></li>')
+    // ✅ split title + description
+    .replace(
+      /^• ([^\.]+)\.\s*(.+)$/gm,
+      '<li><strong>$1.</strong><br>$2</li>'
+    )
+
+    // fallback simple section
+    .replace(
+      /^• (.+)$/gm,
+      '<li><strong>$1</strong></li>'
+    )
 
     // bullet items
     .replace(/^\* (.+)$/gm, '<li>$1</li>')
 
-    // wrap list blocks
+    // wrap lists
     .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
     .replace(/<\/ul>\s*<ul>/g, '')
 
-    // REMOVE line breaks
+    // cleanup
     .replace(/\n/g, '')
-
-    // REMOVE empty paragraphs
     .replace(/<p>\s*<\/p>/g, '');
 }
 
