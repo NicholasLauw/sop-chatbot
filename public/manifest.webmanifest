@@ -2,7 +2,7 @@
   "name": "Hotel Staff Assistant — SOP",
   "short_name": "SOP Assistant",
   "description": "AI assistant that answers hotel staff questions from your Standard Operating Procedures.",
-  "start_url": "./hotel-sop-chatbot.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
