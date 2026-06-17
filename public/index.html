@@ -20,7 +20,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --green:    #14AEB3;
+    --green:    #15803D;
     --gold-lt: #1FA34F;
     --gold-text: #166534;
     --ink:     #FFFFFF;
@@ -362,14 +362,14 @@
   }
 
   .msg.bot .bubble {
-    background: var(--stone);
-    border: 1px solid rgba(46,184,46,0.12);
+    background: var(--teal-soft);
+    border: 1px solid var(--teal-border);
     border-bottom-left-radius: 4px;
     color: var(--mist);
   }
   .msg.user .bubble {
-    background: rgba(46,184,46,0.15);
-    border: 1px solid rgba(46,184,46,0.25);
+    background: rgba(20,174,179,0.16);
+    border: 1px solid rgba(20,174,179,0.3);
     border-bottom-right-radius: 4px;
     color: var(--mist);
   }
@@ -377,7 +377,7 @@
   .bubble strong { color: var(--gold-text); font-weight: 600; }
   .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
   .bubble li { margin-bottom: 4px; }
-  .bubble hr { border: none; border-top: 1px solid rgba(46,184,46,0.15); margin: 10px 0; }
+  .bubble hr { border: none; border-top: 1px solid var(--teal-border); margin: 10px 0; }
   .bubble p { margin-bottom: 4px; }
   .bubble p:has(strong) { margin-bottom: 2px; }
   .bubble p:last-child { margin-bottom: 0; }
