@@ -29,7 +29,10 @@
     --staff:   #E6F4E6;
     --border:  #D8E8D8;
     --red:     #C0392B;
-    --teal:    #14AEB3;
+    --teal:      #14AEB3;
+    --teal-soft: #DCF3F4;
+    --teal-border: rgba(20,174,179,0.22);
+    --teal-hover:  rgba(20,174,179,0.1);
     --font-display: 'Playfair Display', Georgia, serif;
     --font-body:    'Inter', system-ui, sans-serif;
   }
@@ -49,8 +52,8 @@
 
   /* ── Header ── */
   header {
-    background: var(--teal);
-    border-bottom: 1px solid rgba(46,184,46,0.3);
+    background: var(--teal-soft);
+    border-bottom: 1px solid var(--teal-border);
     padding: 0 24px;
     height: 64px;
     display: flex;
@@ -142,7 +145,7 @@
     border-radius: 6px;
     flex-shrink: 0;
   }
-  .sidebar-toggle:hover { background: rgba(46,184,46,0.08); }
+  .sidebar-toggle:hover { background: var(--teal-hover); }
 
   .sidebar-backdrop {
     display: none;
@@ -164,8 +167,8 @@
   /* ── Sidebar ── */
   aside {
     width: 260px;
-    background: var(--teal);
-    border-right: 1px solid rgba(46,184,46,0.15);
+    background: var(--teal-soft);
+    border-right: 1px solid var(--teal-border);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -174,7 +177,7 @@
 
   .sidebar-header {
     padding: 16px;
-    border-bottom: 1px solid rgba(46,184,46,0.1);
+    border-bottom: 1px solid var(--teal-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -227,7 +230,7 @@
     font-weight: 500;
   }
 
-  .sop-category-btn:hover { background: rgba(46,184,46,0.1); color: var(--gold-text); }
+  .sop-category-btn:hover { background: var(--teal-hover); color: var(--gold-text); }
   .sop-category-btn .chevron { font-size: 10px; transition: transform 0.2s; }
   .sop-category-btn.open .chevron { transform: rotate(90deg); }
 
@@ -250,7 +253,7 @@
     line-height: 1.4;
   }
 
-  .sop-chip:hover { background: rgba(46,184,46,0.08); color: var(--gold-text); }
+  .sop-chip:hover { background: var(--teal-hover); color: var(--gold-text); }
   .sop-chip::before { content: '›'; margin-right: 6px; color: var(--gold-text); opacity: 0.7; }
 
   /* Sidebar placeholder */
