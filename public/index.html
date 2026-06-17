@@ -119,6 +119,30 @@
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
+  /* ── Sidebar toggle (hamburger) ── */
+  .sidebar-toggle {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--mist);
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .sidebar-toggle:hover { background: rgba(255,255,255,0.06); }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 90;
+  }
+  .sidebar-backdrop.show { display: block; }
+
   
   /* ── Layout ── */
   .app {
@@ -603,6 +627,28 @@
     flex: 1;
     overflow: hidden;
   }
+
+  /* ── Mobile responsive ── */
+  @media (max-width: 768px) {
+    .sidebar-toggle { display: inline-flex; align-items: center; justify-content: center; }
+
+    aside {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      z-index: 100;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.4);
+    }
+    aside.open { transform: translateX(0); }
+
+    .brand-text p { display: none; }
+    header { padding: 0 12px; gap: 10px; }
+    .sop-status span { display: none; }
+    .sop-status { padding: 6px 8px; }
+  }
 </style>
 </head>
 <body>
@@ -623,6 +669,7 @@
 
 <header>
   <div class="brand">
+    <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle topics" aria-label="Toggle sidebar">☰</button>
     <div class="brand-icon">🏨</div>
     <div class="brand-text">
       <h1>Hotel Staff Assistant</h1>
@@ -640,8 +687,10 @@
   </div>
 </header>
 
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
 <div class="app">
-  <aside>
+  <aside id="sidebar">
     <div class="sidebar-header">
       <h2>SOP Quick Topics</h2>
       <span class="sop-file-name" id="sop-file-label">—</span>
@@ -711,9 +760,8 @@
 //     it's a different key from your Gemini key and is lower-risk to
 //     keep client-side, but you can also move it server-side later
 //     the same way the Gemini key was moved.
-const GDRIVE_SOP_URL      = 'https://drive.google.com/file/d/1tqUU7j5MUOylljwogaWBy2xfo7ZRioi7/view?usp=sharing';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
-const GOOGLE_DRIVE_API_KEY = 'AIzaSyB4kizpSH2DiJB7LQ3iNYGC2DwFn6t9ku8';  // e.g. 'AIzaSy...'
-
+const GDRIVE_SOP_URL      = '';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
+const GOOGLE_DRIVE_API_KEY = '';  // e.g. 'AIzaSy...'
 
 // (B) LOCAL FILE — a PDF/TXT/MD sitting in the SAME FOLDER as this HTML.
 //     Used only if GDRIVE_SOP_URL is empty. './' = next to this file.
@@ -1070,6 +1118,7 @@ function buildSidebarFromSOP(text) {
         userInput.value = `Apa SOP untuk: ${item}?`;
         userInput.focus();
         autoResize();
+        closeSidebar();
       });
       itemsDiv.appendChild(chip);
     });
@@ -1340,6 +1389,27 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('Service worker registration failed:', err));
   });
 }
+
+// ── Mobile sidebar toggle ──────────────────────────────────────────
+const sidebarToggle  = document.getElementById('sidebar-toggle');
+const sidebarEl      = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+function openSidebar() {
+  sidebarEl.classList.add('open');
+  sidebarBackdrop.classList.add('show');
+}
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  sidebarBackdrop.classList.remove('show');
+}
+function toggleSidebar() {
+  if (sidebarEl.classList.contains('open')) closeSidebar();
+  else openSidebar();
+}
+
+sidebarToggle.addEventListener('click', toggleSidebar);
+sidebarBackdrop.addEventListener('click', closeSidebar);
 
 // ─── Auth / Login ─────────────────────────────────────────────────
 const loginOverlay = document.getElementById('login-overlay');
