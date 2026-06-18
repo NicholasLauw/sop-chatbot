@@ -53,6 +53,48 @@ function requireAuth(req, res, next) {
   return res.status(401).json({ error: 'Not authenticated' });
 }
 
+// ── Rate limiting (per session, in-memory) ───────────────────────────
+// Keyed by session token rather than IP, so multiple staff sharing the
+// same hotel WiFi (and therefore the same public IP) each get their own
+// quota instead of being throttled together.
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute window
+const RATE_LIMIT_MAX       = 20;        // max requests per window
+const RATE_LIMIT_BURST     = 5;         // small burst allowance on top
+
+const rateLimitBuckets = new Map(); // sessionToken -> array of request timestamps
+
+// Periodically clear out old buckets so memory doesn't grow forever
+setInterval(() => {
+  const cutoff = Date.now() - RATE_LIMIT_WINDOW_MS;
+  for (const [key, timestamps] of rateLimitBuckets.entries()) {
+    const recent = timestamps.filter(t => t > cutoff);
+    if (recent.length === 0) rateLimitBuckets.delete(key);
+    else rateLimitBuckets.set(key, recent);
+  }
+}, 5 * 60 * 1000).unref();
+
+function rateLimit(req, res, next) {
+  const token = req.cookies && req.cookies.session;
+  const key = token || req.ip; // fall back to IP if no session somehow
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+
+  const timestamps = (rateLimitBuckets.get(key) || []).filter(t => t > cutoff);
+  const limit = RATE_LIMIT_MAX + RATE_LIMIT_BURST;
+
+  if (timestamps.length >= limit) {
+    const retryAfterMs = timestamps[0] - cutoff;
+    res.set('Retry-After', Math.ceil(retryAfterMs / 1000).toString());
+    return res.status(429).json({
+      error: 'You\'re sending messages too quickly. Please wait a moment and try again.'
+    });
+  }
+
+  timestamps.push(now);
+  rateLimitBuckets.set(key, timestamps);
+  next();
+}
+
 // ── Login endpoint ────────────────────────────────────────────────────
 app.post('/api/login', (req, res) => {
   const { password } = req.body || {};
@@ -75,7 +117,7 @@ app.post('/api/login', (req, res) => {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60, // 1 hours
+    maxAge: 1000 * 60 * 60 * 12, // 12 hours
   });
 
   res.json({ ok: true });
@@ -94,7 +136,7 @@ app.get('/api/session', (req, res) => {
 });
 
 // ── Chat endpoint (proxies to Gemini, requires auth) ──────────────────
-app.post('/api/chat', requireAuth, async (req, res) => {
+app.post('/api/chat', requireAuth, rateLimit, async (req, res) => {
   try {
     const { systemPrompt, contents } = req.body || {};
 
@@ -113,17 +155,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt || '' }] },
         contents,
-        generationConfig: {
-          temperature: 0.35,
-          topK: 40,
-          topP: 0.9,
-          maxOutputTokens: 4096,
-          // 2.5-series models spend part of maxOutputTokens on internal "thinking"
-          // before writing the visible answer. This task is straightforward
-          // SOP lookup, not multi-step reasoning, so we turn thinking off to
-          // keep the full token budget available for the actual answer.
-          thinkingConfig: { thinkingBudget: 0 },
-        },
+        generationConfig: { temperature: 0.35, topK: 40, topP: 0.9, maxOutputTokens: 1200 },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -145,22 +177,12 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       return res.status(geminiRes.status).json({ error: message });
     }
 
-    const candidate = data?.candidates?.[0];
-    const text = candidate?.content?.parts?.[0]?.text;
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      const reason = candidate?.finishReason;
-      if (reason === 'MAX_TOKENS') {
-        console.error('Gemini response truncated: hit maxOutputTokens with no visible text yet.');
-        return res.status(502).json({ error: 'The answer was too long and got cut off before any text was written. Try asking a more specific question.' });
-      }
       return res.status(502).json({ error: 'Empty response from Gemini.' });
     }
 
-    if (candidate?.finishReason === 'MAX_TOKENS') {
-      console.warn('Gemini response was truncated (hit maxOutputTokens).');
-    }
-
-    res.json({ text, truncated: candidate?.finishReason === 'MAX_TOKENS' });
+    res.json({ text });
   } catch (err) {
     console.error('Chat proxy error:', err);
     res.status(500).json({ error: 'Internal server error' });
