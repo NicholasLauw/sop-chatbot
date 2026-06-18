@@ -1130,7 +1130,7 @@ function buildSidebarFromSOP(text) {
       chip.className = 'sop-chip';
       chip.textContent = item;
       chip.addEventListener('click', () => {
-        userInput.value = `Apa SOP untuk: ${item}?`;
+        userInput.value = `Apa SOP ${cat} untuk: ${item}?`;
         userInput.focus();
         autoResize();
         closeSidebar();
