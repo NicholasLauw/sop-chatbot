@@ -1,3 +1,10 @@
+Account Yang Dibutuhkan
+===============================
+- Google AI Studio: Google Gemini API Key (Stored in .env file)
+- Google Cloud: Google Drive API Key (Stored in HTML file)
+- Google Drive: Tempat Store SOP Document in PDF FORM (Stored in HTML file)
+
+
 HOTEL SOP ASSISTANT — PWA SETUP
 ================================
 
