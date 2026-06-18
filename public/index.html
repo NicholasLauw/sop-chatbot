@@ -101,6 +101,30 @@
     margin-top: 1px;
   }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FFFFFF;
+    border: 1px solid var(--gold-text);
+    color: var(--gold-text);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+  }
+  .upload-btn:hover { background: var(--gold-text); color: #FFFFFF; }
+
   /* SOP status badge */
   .sop-status {
     display: flex;
@@ -692,6 +716,9 @@
     </div>
   </div>
   <div class="header-actions">
+    <a class="upload-btn" id="sop-source-link" href="#" target="_blank" rel="noopener noreferrer" title="Open SOP source in a new tab" style="display:none">
+      🔗 <span>View SOP</span>
+    </a>
     <button class="upload-btn" id="install-btn" title="Install this app" style="display:none">
       ⬇️ <span>Install</span>
     </button>
@@ -953,6 +980,14 @@ const sopLabel   = document.getElementById('sop-label');
 const sopFileLabel = document.getElementById('sop-file-label');
 const sopWelcomeNote = document.getElementById('sop-welcome-note');
 const installBtn     = document.getElementById('install-btn');
+const sopSourceLink  = document.getElementById('sop-source-link');
+
+// Show the "View SOP" header button only when a Google Drive SOP link is
+// actually configured; clicking it opens the source document in a new tab.
+if (GDRIVE_SOP_URL) {
+  sopSourceLink.href = GDRIVE_SOP_URL;
+  sopSourceLink.style.display = 'inline-flex';
+}
 
 // ─── Extract text from a PDF (ArrayBuffer) using PDF.js ─────────────
 async function extractPdfText(arrayBuffer) {
