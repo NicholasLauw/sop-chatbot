@@ -20,19 +20,15 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --green:    #14AEB3;
-    --gold-lt: #1FA34F;
-    --gold-text: #166534;
+    --gold:    #14AEB3;
+    --gold-lt: #1AC4C9;
+    --gold-text: #0C6E71;
     --ink:     #FFFFFF;
-    --stone:   #F3F7F2;
-    --mist:    #1A1F1A;
-    --staff:   #E6F4E6;
-    --border:  #D8E8D8;
+    --stone:   #EAF8F7;
+    --mist:    #14241F;
+    --staff:   #DCF3F2;
+    --border:  #BFE8E6;
     --red:     #C0392B;
-    --teal:      #14AEB3;
-    --teal-soft: #DCF3F4;
-    --teal-border: rgba(20,174,179,0.22);
-    --teal-hover:  rgba(20,174,179,0.1);
     --font-display: 'Playfair Display', Georgia, serif;
     --font-body:    'Inter', system-ui, sans-serif;
   }
@@ -52,8 +48,8 @@
 
   /* ── Header ── */
   header {
-    background: var(--teal-soft);
-    border-bottom: 1px solid var(--teal-border);
+    background: var(--stone);
+    border-bottom: 1px solid rgba(20,174,179,0.3);
     padding: 0 24px;
     height: 64px;
     display: flex;
@@ -110,12 +106,14 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(46,184,46,0.06);
-    border: 1px solid rgba(46,184,46,0.2);
+    background: #FFFFFF;
+    border: 1px solid rgba(20,174,179,0.35);
     border-radius: 8px;
     padding: 6px 12px;
     font-size: 11px;
-    color: rgba(26,31,26,0.55);
+    font-weight: 500;
+    color: var(--gold-text);
+    box-shadow: 0 1px 3px rgba(12,110,113,0.08);
   }
 
   .sop-status .dot {
@@ -126,9 +124,9 @@
     flex-shrink: 0;
     transition: background 0.3s;
   }
-  .sop-status .dot.loaded  { background: #5CB85C; box-shadow: 0 0 6px rgba(92,184,92,0.5); }
+  .sop-status .dot.loaded  { background: #2E9E4F; box-shadow: 0 0 6px rgba(46,158,79,0.5); }
   .sop-status .dot.error   { background: var(--red); }
-  .sop-status .dot.loading { background: var(--green); animation: pulse 1s infinite; }
+  .sop-status .dot.loading { background: var(--gold); animation: pulse 1s infinite; }
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
@@ -145,7 +143,7 @@
     border-radius: 6px;
     flex-shrink: 0;
   }
-  .sidebar-toggle:hover { background: var(--teal-hover); }
+  .sidebar-toggle:hover { background: rgba(20,174,179,0.08); }
 
   .sidebar-backdrop {
     display: none;
@@ -167,8 +165,8 @@
   /* ── Sidebar ── */
   aside {
     width: 260px;
-    background: var(--teal-soft);
-    border-right: 1px solid var(--teal-border);
+    background: var(--stone);
+    border-right: 1px solid rgba(20,174,179,0.15);
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
@@ -177,7 +175,7 @@
 
   .sidebar-header {
     padding: 16px;
-    border-bottom: 1px solid var(--teal-border);
+    border-bottom: 1px solid rgba(20,174,179,0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -208,7 +206,7 @@
   }
 
   .sop-list::-webkit-scrollbar { width: 3px; }
-  .sop-list::-webkit-scrollbar-thumb { background: rgba(46,184,46,0.15); border-radius: 4px; }
+  .sop-list::-webkit-scrollbar-thumb { background: rgba(20,174,179,0.15); border-radius: 4px; }
 
   .sop-category { margin-bottom: 4px; }
 
@@ -230,7 +228,7 @@
     font-weight: 500;
   }
 
-  .sop-category-btn:hover { background: var(--teal-hover); color: var(--gold-text); }
+  .sop-category-btn:hover { background: rgba(20,174,179,0.1); color: var(--gold-text); }
   .sop-category-btn .chevron { font-size: 10px; transition: transform 0.2s; }
   .sop-category-btn.open .chevron { transform: rotate(90deg); }
 
@@ -253,7 +251,7 @@
     line-height: 1.4;
   }
 
-  .sop-chip:hover { background: var(--teal-hover); color: var(--gold-text); }
+  .sop-chip:hover { background: rgba(20,174,179,0.08); color: var(--gold-text); }
   .sop-chip::before { content: '›'; margin-right: 6px; color: var(--gold-text); opacity: 0.7; }
 
   /* Sidebar placeholder */
@@ -285,7 +283,7 @@
   }
 
   #chat-log::-webkit-scrollbar { width: 4px; }
-  #chat-log::-webkit-scrollbar-thumb { background: rgba(46,184,46,0.2); border-radius: 4px; }
+  #chat-log::-webkit-scrollbar-thumb { background: rgba(20,174,179,0.2); border-radius: 4px; }
 
   .welcome {
     text-align: center;
@@ -338,38 +336,24 @@
   }
   .avatar img { width: 70%; height: 70%; object-fit: contain; }
   .msg.bot  .avatar { background: #FFFFFF; color: var(--ink); }
-  .msg.user .avatar { background: var(--staff); color: var(--gold-text); border: 1px solid rgba(46,184,46,0.3); }
+  .msg.user .avatar { background: var(--staff); color: var(--gold-text); border: 1px solid rgba(20,174,179,0.3); }
 
   .bubble {
     padding: 11px 15px;
     border-radius: 12px;
     font-size: 13.5px;
     line-height: 1.65;
-    max-width: min(640px, calc(100vw - 120px));
-    width: fit-content;
+    max-width: calc(100% - 44px);
   }
- 
-  .bubble .section {
-    margin: 18px 0 6px;
-  }
-  .bubble .section:first-child {
-    margin-top: 0;
-  }
-  
-  .bubble .bullet {
-    margin-left: 12px;
-    margin-bottom: 2px;
-  }
-
   .msg.bot .bubble {
-    background: var(--teal-soft);
-    border: 1px solid var(--teal-border);
+    background: var(--stone);
+    border: 1px solid rgba(20,174,179,0.12);
     border-bottom-left-radius: 4px;
     color: var(--mist);
   }
   .msg.user .bubble {
-    background: rgba(20,174,179,0.16);
-    border: 1px solid rgba(20,174,179,0.3);
+    background: rgba(20,174,179,0.15);
+    border: 1px solid rgba(20,174,179,0.25);
     border-bottom-right-radius: 4px;
     color: var(--mist);
   }
@@ -377,9 +361,8 @@
   .bubble strong { color: var(--gold-text); font-weight: 600; }
   .bubble ul, .bubble ol { padding-left: 18px; margin: 6px 0; }
   .bubble li { margin-bottom: 4px; }
-  .bubble hr { border: none; border-top: 1px solid var(--teal-border); margin: 10px 0; }
-  .bubble p { margin-bottom: 4px; }
-  .bubble p:has(strong) { margin-bottom: 2px; }
+  .bubble hr { border: none; border-top: 1px solid rgba(20,174,179,0.15); margin: 10px 0; }
+  .bubble p { margin-bottom: 6px; }
   .bubble p:last-child { margin-bottom: 0; }
 
   .msg-meta {
@@ -395,14 +378,14 @@
     align-items: center;
     padding: 12px 16px;
     background: var(--stone);
-    border: 1px solid rgba(46,184,46,0.12);
+    border: 1px solid rgba(20,174,179,0.12);
     border-radius: 12px;
     border-bottom-left-radius: 4px;
     width: fit-content;
   }
   .typing-bubble span {
     width: 7px; height: 7px;
-    background: var(--green);
+    background: var(--gold);
     border-radius: 50%;
     animation: bounce 1.2s infinite;
     opacity: 0.5;
@@ -415,7 +398,7 @@
   .input-area {
     padding: 14px 20px 18px;
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
-    border-top: 1px solid rgba(46,184,46,0.1);
+    border-top: 1px solid rgba(20,174,179,0.1);
     background: var(--ink);
   }
 
@@ -423,15 +406,15 @@
     display: flex;
     gap: 10px;
     background: var(--stone);
-    border: 1px solid rgba(46,184,46,0.2);
+    border: 1px solid rgba(20,174,179,0.2);
     border-radius: 12px;
     padding: 8px 8px 8px 16px;
     align-items: flex-end;
     transition: border-color 0.2s;
   }
   .input-row:focus-within {
-    border-color: rgba(46,184,46,0.5);
-    box-shadow: 0 0 0 3px rgba(46,184,46,0.06);
+    border-color: rgba(20,174,179,0.5);
+    box-shadow: 0 0 0 3px rgba(20,174,179,0.06);
   }
 
   #user-input {
@@ -451,7 +434,7 @@
 
   #send-btn {
     width: 36px; height: 36px;
-    background: var(--green);
+    background: var(--gold);
     border: none;
     border-radius: 8px;
     cursor: pointer;
@@ -461,11 +444,11 @@
     font-size: 16px;
     flex-shrink: 0;
     transition: background 0.15s, transform 0.1s;
-    color: var(--ink);
+    color: var(--mist);
   }
   #send-btn:hover { background: var(--gold-lt); }
   #send-btn:active { transform: scale(0.93); }
-  #send-btn:disabled { background: rgba(46,184,46,0.25); cursor: not-allowed; }
+  #send-btn:disabled { background: rgba(20,174,179,0.25); cursor: not-allowed; }
 
   .input-hint {
     font-size: 10px;
@@ -510,7 +493,7 @@
   .modal-overlay.show { display: flex; }
   .modal-card {
     background: var(--stone);
-    border: 1px solid rgba(46,184,46,0.25);
+    border: 1px solid rgba(20,174,179,0.25);
     border-radius: 14px;
     padding: 24px;
     max-width: 440px;
@@ -533,7 +516,7 @@
   .modal-input {
     width: 100%;
     background: var(--ink);
-    border: 1px solid rgba(46,184,46,0.25);
+    border: 1px solid rgba(20,174,179,0.25);
     border-radius: 8px;
     padding: 11px 13px;
     color: var(--mist);
@@ -542,7 +525,7 @@
     outline: none;
     transition: border-color 0.15s;
   }
-  .modal-input:focus { border-color: rgba(46,184,46,0.6); }
+  .modal-input:focus { border-color: rgba(20,174,179,0.6); }
   .modal-input::placeholder { color: rgba(26,31,26,0.25); }
   .modal-actions {
     display: flex;
@@ -560,15 +543,15 @@
     cursor: pointer;
     transition: background 0.15s, opacity 0.15s;
   }
-  .modal-btn.primary { background: var(--green); color: var(--ink); }
+  .modal-btn.primary { background: var(--gold); color: var(--mist); }
   .modal-btn.primary:hover { background: var(--gold-lt); }
   .modal-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
   .modal-btn.ghost {
     background: none;
-    border: 1px solid rgba(46,184,46,0.3);
+    border: 1px solid rgba(20,174,179,0.3);
     color: rgba(26,31,26,0.7);
   }
-  .modal-btn.ghost:hover { background: rgba(46,184,46,0.1); }
+  .modal-btn.ghost:hover { background: rgba(20,174,179,0.1); }
   .modal-note {
     font-size: 11px;
     margin-top: 12px;
@@ -592,7 +575,7 @@
   #login-overlay.hidden { display: none; }
   .login-box {
     background: var(--stone);
-    border: 1px solid rgba(46,184,46,0.2);
+    border: 1px solid rgba(20,174,179,0.2);
     border-radius: 12px;
     padding: 32px 28px;
     width: 100%;
@@ -619,7 +602,7 @@
   .login-box input {
     width: 100%;
     background: #FFFFFF;
-    border: 1px solid rgba(46,184,46,0.25);
+    border: 1px solid rgba(20,174,179,0.25);
     border-radius: 8px;
     padding: 11px 13px;
     color: var(--mist);
@@ -628,11 +611,11 @@
     outline: none;
     margin-bottom: 12px;
   }
-  .login-box input:focus { border-color: rgba(46,184,46,0.6); }
+  .login-box input:focus { border-color: rgba(20,174,179,0.6); }
   .login-box button {
     width: 100%;
-    background: var(--green);
-    color: var(--ink);
+    background: var(--gold);
+    color: var(--mist);
     border: none;
     border-radius: 8px;
     padding: 11px;
@@ -688,7 +671,7 @@
 <!-- ── Login overlay ── -->
 <div id="login-overlay">
   <div class="login-box">
-    <div class="brand-icon"><img src="./icon-512.png" alt="Le Green" style="width:80%;height:80%;"></div>
+    <div class="brand-icon"><img src="./legreen-wordmark.png" alt="Le Green" style="width:80%;height:80%;"></div>
     <h1>Staff Sign In</h1>
     <p>Enter the staff access password to continue.</p>
     <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
@@ -737,14 +720,14 @@
       <div class="welcome">
         <div class="welcome-icon">🤝</div>
         <h2>Good day, team member</h2>
-        <p>Tanyakan aku mengenai SOP LeGreen — check-in, housekeeping, complaints, dll.</p>
+        <p>Ask me anything about hotel procedures — check-in, housekeeping, F&amp;B, guest complaints, safety, and more.</p>
         <p class="sop-note" id="sop-welcome-note">⏳ Loading your SOP document…</p>
       </div>
     </div>
 
     <div class="input-area">
       <div class="input-row">
-        <textarea id="user-input" rows="1" placeholder="Tanyakan tentang prosedur SOP..." maxlength="1000"></textarea>
+        <textarea id="user-input" rows="1" placeholder="Ask about a hotel procedure…" maxlength="1000"></textarea>
         <button id="send-btn" title="Send">➤</button>
       </div>
       <p class="input-hint">Press Enter to send · Shift+Enter for new line</p>
@@ -892,7 +875,7 @@ const DEFAULT_SIDEBAR = {
    "Definisi SOP", "Tujuan SOP","Manfaat SOP", "Format & Akses SOP","Pengembangan & Revisi SOP",
    "Pengawasan, Monitoring, dan Evaluasi", "Ketentuan Pengawasan",
   ],
-  "Organisasi & Profil Perusahaan": [
+  "ORGANISASI & PROFIL PERUSAHAAN": [
     "Profil Perusahaan", "Sejarah & Perkembangan", "Visi, Misi, dan Nilai", 
     "Falsafah & Karakter Dasar", "Deskripsi Brand & Personality", "Bisnis Utama LeGreen",
     "Sistem Manajemen & Struktur Organisasi", "Konsep & Rumus Bisnis",
@@ -902,13 +885,13 @@ const DEFAULT_SIDEBAR = {
     "Pencegahan & Penanganan Kekerasan terhadap Staf",
     "Call Tree", "Whistleblower / Pelaporan Pelanggaran",
   ],
-  "Front Office": [
+  "FRONT OFFICE": [
     "Check-In", "Deposit Kamar", "Metode Pembayaran", "Group Check-In", "Check-Out", 
     "Check-Out Longstay & Serviced Office", "Early Check-In / Late Check-Out", "Tamu Asing",
     "Tamu OTA & Travel Agent", "Tamu Guarantee Letter", "Tamu Blacklist & Penolakan", 
     "Barang Dilarang", "Penerimaan Paket Tamu", "Refund", "Upselling", "Penitipan Barang",
   ],
-  "Housekeeping": [
+  "HOUSEKEEPING": [
     "Tanggung Jawab", "Kebersihan Harian Kamar", "Persiapan Kamar Siap Jual", 
     "Making Bed", "Pembersihan Kamar Mandi", "Menyapu & Mengepel", 
     "Membersihkan Kaca & Stainless", "Pengecekan Final Kamar", "Tampilan Meja Kamar",
@@ -917,31 +900,31 @@ const DEFAULT_SIDEBAR = {
     "General Cleaning / Deep Cleaning", "Inventory & Pengelolaan Linen",
     "Pertolongan Pertama Linen Noda", "Housekeeping Serviced Office",
   ],
-  "Maintenance": [
+  "MAINTENANCE": [
     "Pemeliharaan Rutin", "Peralatan Area Publik yang Dipantau", "Peralatan Kamar Tamu",
     "Minor Maintenance — Panduan Lokasi", "Instalasi Listrik", 
     "Pemadaman PLN — Menyalakan Genset", "Instalasi Air", "Sistem TV", "Internet / WiFi",
     "Exhaust Fan", "Filter Air", "Pengecekan Genset Mingguan", 
     "Kartu Akses — Penggantian Baterai",
   ],
-  "Breakfast & Laundry": [
+  "BREAKFAST & LAUNDRY": [
     "Persiapan Area Breakfast", "Persiapan Makanan & Minuman", "Kontrol Stok Breakfast",
     "Pengelolaan Linen & Laundry",
   ],
-  "IT, Security & Emergency": [
+  "IT, SECURITY & EMERGENCY": [
     "Pengelolaan Jaringan & WiFi", "Pemeliharaan Perangkat Keras ",
     "Penanganan Masalah Teknologi", "Disaster Recovery (Pemulihan Bencana IT)", 
     "Patroli Security", "Keamanan Serviced Office", "Pencatatan Laporan Kehilangan",
     "Penanganan Kebakaran & Bencana Alam",
   ],
-  "Hotel Manager (HM)": [
+  "HOTEL MANAGER (HM)": [
     "Fungsi & Struktur Pelaporan", "Jam Kerja & Tata Tertib", "Kompensasi & Benefit",
     "Penilaian Kinerja (KPI)", "Tanggung Jawab — Strategi & SOP", 
     "Tanggung Jawab — Human Resources", "Tanggung Jawab — Operasional", 
     "Tanggung Jawab — Marketing & Sales", "Tanggung Jawab — Keuangan & Administrasi",
     "Penanganan Komplain Tamu",
   ],
-  "Divisi Operator (Pusat)": [
+  "DIVISI OPERATOR (PUSAT)": [
     "Rekrutmen & Seleksi", "Performance Appraisal", "Reward Kinerja Tahunan", "Staf Outsourcing",
     "Absensi & Cuti", "BPJS Kesehatan", "Corporate Event & CSR", "Channel Management & OTA",
     "Pricing & Diskon", "Marketing Digital & Promosi", "Marketing Intelligent", 
@@ -1264,7 +1247,7 @@ SCOPE: Only answer questions related to hotel operations, guest services, or sta
   }
 
   if (!data.text) throw new Error('Empty response from server.');
-  return { text: data.text, truncated: !!data.truncated };
+  return data.text;
 }
 
 // ─── UI helpers ──────────────────────────────────────────────────────
@@ -1285,26 +1268,16 @@ function ts() {
 
 function formatBotText(text) {
   return text
-    // numbered section headers, e.g. "16. Allotment & Pricing" or "12. Cuti:"
-    // (model may or may not wrap these in ** itself — strip stray ** either way).
-    // Distinguished from numbered procedure steps (e.g. "1. Monitoring tabel...")
-    // by NOT ending in a period, since headers are short titles, not full sentences.
-    .replace(
-      /^\*{0,2}(\d+)\.\s+([^\n.:]+?)\*{0,2}(:)?\s*$/gm,
-      '<div class="section"><strong>$1. $2$3</strong></div>'
-    )
-
-    // remaining inline bold (e.g. "**Tujuan:**" inside a bullet line)
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-
-    // bullets
-    .replace(/^\*\s+(.+)$/gm, '<div class="bullet">• $1</div>')
-
-    // keep line breaks
+    .replace(/^#{1,3} (.+)$/gm, '<strong>$1</strong>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li>$2</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ol>$1</ol>')
+    .replace(/^[•\-] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, m => m.includes('<ol>') ? m : `<ul>${m}</ul>`)
+    .replace(/---/g, '<hr>')
+    .replace(/\n{2,}/g, '</p><p>')
     .replace(/\n/g, '<br>')
-
-    // remove excessive breaks
-    .replace(/(<br>\s*){2,}/g, '<br>');
+    .replace(/^([^<].*)$/m, '<p>$1</p>');
 }
 
 function escapeHtml(t) {
@@ -1386,9 +1359,9 @@ async function sendMessage() {
   showTyping();
 
   try {
-    const { text: reply, truncated } = await callGemini(text);
+    const reply = await callGemini(text);
     removeTyping();
-    appendMessage('bot', reply + (truncated ? '\n\n⚠️ *Jawaban terpotong karena terlalu panjang — coba tanyakan bagian yang lebih spesifik.*' : ''));
+    appendMessage('bot', reply);
     chatHistory.push({ role: 'assistant', content: reply });
     if (chatHistory.length > 24) chatHistory = chatHistory.slice(-24);
   } catch (err) {
