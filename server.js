@@ -155,7 +155,7 @@ app.post('/api/chat', requireAuth, rateLimit, async (req, res) => {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt || '' }] },
         contents,
-        generationConfig: { temperature: 0.35, topK: 40, topP: 0.9, maxOutputTokens: 4000,thinkingConfig: { thinkingBudget: 0 }, },
+        generationConfig: { temperature: 0.35, topK: 40, topP: 0.9, maxOutputTokens: 4000,},
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
