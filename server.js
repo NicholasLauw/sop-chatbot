@@ -22,7 +22,7 @@ if (!GEMINI_API_KEY) {
   console.warn('⚠️  GEMINI_API_KEY is not set. /api/chat will return an error until it is configured.');
 }
 
-app.use(express.json({ limit: '20mb' }));
+app.use(express.json({ limit: '20mb' })); // raised from 2mb — docx images sent as base64 per request
 app.use(cookieParser());
 
 // ── Simple signed session token (HMAC) ───────────────────────────────
@@ -117,7 +117,7 @@ app.post('/api/login', (req, res) => {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60, // 1 hours
+    maxAge: 1000 * 60 * 60 * 12, // 12 hours
   });
 
   res.json({ ok: true });
@@ -135,6 +135,33 @@ app.get('/api/session', (req, res) => {
   res.json({ authenticated: isValidSessionToken(token) });
 });
 
+// ── SOP image store (session-keyed, in-memory) ────────────────────────
+// Images extracted from docx are sent here ONCE after SOP loads, then
+// retrieved per chat request — so the client never resends large payloads
+// on every message (which would hit Railway's proxy request-size limit).
+const sopImageStore = new Map(); // sessionToken -> [{ ref, mimeType, base64 }]
+
+// Periodically evict stale image sets (older than 13 hours, just past
+// the session lifetime) so memory doesn't grow forever.
+setInterval(() => {
+  const cutoff = Date.now() - 13 * 60 * 60 * 1000;
+  for (const [key] of sopImageStore.entries()) {
+    const [, ts] = key.split('.');
+    if (Number(ts) < cutoff) sopImageStore.delete(key);
+  }
+}, 60 * 60 * 1000).unref();
+
+// ── SOP images upload endpoint ────────────────────────────────────────
+app.post('/api/sop-images', requireAuth, (req, res) => {
+  const { images } = req.body || {};
+  const token = req.cookies && req.cookies.session;
+  if (!Array.isArray(images)) {
+    return res.status(400).json({ error: 'images must be an array' });
+  }
+  sopImageStore.set(token, images);
+  res.json({ ok: true, count: images.length });
+});
+
 // ── Chat endpoint (proxies to Gemini, requires auth) ──────────────────
 app.post('/api/chat', requireAuth, rateLimit, async (req, res) => {
   try {
@@ -147,6 +174,32 @@ app.post('/api/chat', requireAuth, rateLimit, async (req, res) => {
       return res.status(500).json({ error: 'Server is not configured with a Gemini API key.' });
     }
 
+    // Prepend any stored SOP images as a vision reference turn.
+    // Images were uploaded once via /api/sop-images after SOP load,
+    // so we don't need the client to resend them on every message.
+    const token = req.cookies && req.cookies.session;
+    const storedImages = sopImageStore.get(token) || [];
+    let finalContents = contents;
+    if (storedImages.length > 0) {
+      const imageParts = storedImages.map(img => ({
+        inline_data: { mime_type: img.mimeType, data: img.base64 }
+      }));
+      finalContents = [
+        {
+          role: 'user',
+          parts: [
+            { text: `Berikut adalah gambar-gambar yang tertanam dalam dokumen SOP (${storedImages.map(i => i.ref).join(', ')}). Gunakan sebagai referensi visual saat relevan dengan pertanyaan staf.` },
+            ...imageParts,
+          ],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Baik, saya akan menggunakan gambar-gambar SOP tersebut sebagai referensi visual saat menjawab.' }],
+        },
+        ...contents,
+      ];
+    }
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
     const geminiRes = await fetch(url, {
@@ -154,8 +207,8 @@ app.post('/api/chat', requireAuth, rateLimit, async (req, res) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt || '' }] },
-        contents,
-        generationConfig: { temperature: 0.35, topK: 40, topP: 0.9, maxOutputTokens: 4000,},
+        contents: finalContents,
+        generationConfig: { temperature: 0.35, topK: 40, topP: 0.9, maxOutputTokens: 1200 },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
