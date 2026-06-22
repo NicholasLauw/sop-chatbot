@@ -22,7 +22,7 @@ if (!GEMINI_API_KEY) {
   console.warn('⚠️  GEMINI_API_KEY is not set. /api/chat will return an error until it is configured.');
 }
 
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
 
 // ── Simple signed session token (HMAC) ───────────────────────────────
