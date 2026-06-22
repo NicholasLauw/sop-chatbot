@@ -804,7 +804,7 @@
 //     it's a different key from your Gemini key and is lower-risk to
 //     keep client-side, but you can also move it server-side later
 //     the same way the Gemini key was moved.
-const GDRIVE_SOP_URL      = 'https://docs.google.com/document/d/14cIrT_o1yrMf3kRLx12s5zevR_uBY11x/edit?usp=sharing&ouid=104345983185194981728&rtpof=true&sd=true';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
+const GDRIVE_SOP_URL      = 'https://drive.google.com/file/d/1tqUU7j5MUOylljwogaWBy2xfo7ZRioi7/view?usp=sharing';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
 const GOOGLE_DRIVE_API_KEY = 'AIzaSyB4kizpSH2DiJB7LQ3iNYGC2DwFn6t9ku8';  // e.g. 'AIzaSy...'
 
 // (B) LOCAL FILE — a PDF/TXT/MD sitting in the SAME FOLDER as this HTML.
@@ -969,6 +969,7 @@ const DEFAULT_SIDEBAR = {
 
 // ─── State ──────────────────────────────────────────────────────────
 let sopContent    = '';
+let sopImages     = []; // [{ ref, mimeType, base64 }] — embedded images for Gemini vision
 let chatHistory   = [];
 let isLoading     = false;
 
@@ -1026,26 +1027,33 @@ async function extractPdfText(arrayBuffer) {
   return fullText.trim();
 }
 
-// ─── Extract text directly from a .docx file using mammoth.js ───────
+// ─── Extract text + images directly from a .docx file using mammoth.js ──
 // Reads the Word document's own XML structure — no PDF export step in
 // between, so headings, bold, and layout don't drift the way they can
-// after a Word → PDF → re-extract round trip. Embedded images are noted
-// inline as a marker (not sent to Gemini — this build is text-only,
-// matching how PDFs are handled here too).
+// after a Word → PDF → re-extract round trip. Embedded images are
+// extracted as base64 and stored for Gemini vision input.
 async function extractDocxText(arrayBuffer) {
   if (!window.mammoth) {
     throw new Error('Word document reader failed to load (check your internet connection).');
   }
 
+  const images = [];
   let imgCounter = 0;
+
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
     {
-      convertImage: mammoth.images.imgElement(async () => {
+      convertImage: mammoth.images.imgElement(async (image) => {
         imgCounter += 1;
-        // Empty src — we only need the image's position marked in the
-        // text, not the image itself rendered or sent anywhere.
-        return { src: '', alt: `[GAMBAR_REF:${imgCounter}]` };
+        const ref = `Gambar ${imgCounter}`;
+        try {
+          const base64 = await image.read('base64');
+          images.push({ ref, mimeType: image.contentType || 'image/png', base64 });
+        } catch (err) {
+          console.warn(`Could not read embedded image ${imgCounter}:`, err.message);
+        }
+        // Empty src — we only need the position marker in the text.
+        return { src: '', alt: `[GAMBAR_REF:${ref}]` };
       }),
     }
   );
@@ -1056,14 +1064,18 @@ async function extractDocxText(arrayBuffer) {
   }
 
   // Walk the generated HTML and turn it into plain text, replacing each
-  // image with an inline marker at the position it actually appeared in
-  // the document (so the SOP text still reads in original order).
+  // image placeholder with an inline marker at the position it appeared.
   const doc = new DOMParser().parseFromString(result.value, 'text/html');
   doc.querySelectorAll('img').forEach(img => {
     const alt = img.getAttribute('alt') || '';
-    const m = alt.match(/^\[GAMBAR_REF:(\d+)\]$/);
-    const label = m ? `Gambar ${m[1]}` : 'Gambar';
-    const marker = doc.createTextNode(`\n[${label} tersedia di dokumen SOP — referensi visual tidak dimuat]\n`);
+    const m = alt.match(/^\[GAMBAR_REF:(.+)\]$/);
+    const label = m ? m[1] : 'Gambar';
+    const wasExtracted = images.some(im => im.ref === label);
+    const marker = doc.createTextNode(
+      wasExtracted
+        ? `\n[${label} tersedia — lihat lampiran visual SOP]\n`
+        : `\n[${label} tersedia di dokumen SOP — referensi visual tidak dimuat]\n`
+    );
     img.replaceWith(marker);
   });
   // Add line breaks after block-level elements so paragraphs/headings/list
@@ -1072,7 +1084,8 @@ async function extractDocxText(arrayBuffer) {
     el.insertAdjacentText('beforeend', '\n');
   });
 
-  return doc.body.textContent.replace(/\n{3,}/g, '\n\n').trim();
+  const text = doc.body.textContent.replace(/\n{3,}/g, '\n\n').trim();
+  return { text, images };
 }
 
 // ─── Google Drive helpers ───────────────────────────────────────────
@@ -1124,7 +1137,7 @@ async function loadFromDrive(shareUrl, apiKey) {
   if (/<html|<!doctype/i.test(asText.slice(0, 200))) {
     throw new Error('Drive returned a web page, not a file. Re-check sharing settings. (Note: native Google Docs must be exported as .docx or PDF first — File → Download in Google Docs.)');
   }
-  return asText;
+  return { text: asText, images: [] };
 }
 
 // ─── Load SOP (Drive → local file → built-in fallback) ──────────────
@@ -1135,9 +1148,9 @@ async function loadSOP() {
     sopLabel.textContent = 'Loading SOP from Google Drive…';
     sopFileLabel.textContent = 'Google Drive';
     try {
-      const text = await loadFromDrive(GDRIVE_SOP_URL, GOOGLE_DRIVE_API_KEY);
+      const { text, images } = await loadFromDrive(GDRIVE_SOP_URL, GOOGLE_DRIVE_API_KEY);
       if (!text.trim()) throw new Error('No readable text found in the Drive file.');
-      applyLoadedSOP(text, 'Google Drive SOP');
+      applyLoadedSOP(text, 'Google Drive SOP', images);
       return;
     } catch (err) {
       console.warn('Drive load failed:', err.message);
@@ -1157,18 +1170,19 @@ async function loadSOP() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     let text;
+    let images = [];
     if (isPdf) {
       const buf = await res.arrayBuffer();
       text = await extractPdfText(buf);
     } else if (isDocx) {
       const buf = await res.arrayBuffer();
-      text = await extractDocxText(buf);
+      ({ text, images } = await extractDocxText(buf));
     } else {
       text = await res.text();
     }
     if (!text.trim()) throw new Error('File is empty or no readable text found');
 
-    applyLoadedSOP(text, fileName);
+    applyLoadedSOP(text, fileName, images);
 
   } catch (err) {
     console.warn('SOP file not loaded:', err.message, '— using built-in fallback.');
@@ -1181,12 +1195,15 @@ async function loadSOP() {
 }
 
 // ─── Apply a successfully loaded SOP to state + UI ──────────────────
-function applyLoadedSOP(text, fileName) {
+function applyLoadedSOP(text, fileName, images = []) {
   sopContent = text;
+  sopImages  = images;
   sopDot.className = 'dot loaded';
   sopLabel.textContent = `SOP loaded · ${fileName}`;
   sopFileLabel.textContent = fileName;
-  sopWelcomeNote.textContent = `✅ SOP loaded from "${fileName}" — ready to assist.`;
+  sopWelcomeNote.textContent = images.length > 0
+    ? `✅ SOP loaded from "${fileName}" — ready to assist. (🖼️ ${images.length} gambar dimuat sebagai referensi visual)`
+    : `✅ SOP loaded from "${fileName}" — ready to assist.`;
   buildSidebarFromSOP(text);
 }
 
@@ -1298,6 +1315,7 @@ ${sopContent}
 YOUR ROLE:
 - Answer staff questions using ONLY the SOP document above as your primary source.
 - If the question is covered in the SOP, give a precise step-by-step answer referencing the relevant section.
+- Some SOP pages contain diagrams, photos, or screenshots — when relevant, you will also receive these as images in a reference turn before the conversation. Use them to give more accurate, visually-grounded answers.
 - If the topic is NOT in the SOP, you may use general 5-star hotel best practices but clearly note: "⚠️ This topic is not in your SOP — the following is general best practice."
 - Always prioritise guest safety and satisfaction.
 - Tell staff when to involve a supervisor or manager.
@@ -1315,6 +1333,27 @@ RESPONSE FORMAT:
 SCOPE: Only answer questions related to hotel operations, guest services, or staff conduct.`;
 
   const contents = [];
+
+  // If images were extracted from the SOP, prepend them as a reference turn
+  // so Gemini can see them when answering. The API is stateless so they must
+  // be resent every message, same as the SOP text already is.
+  if (sopImages.length > 0) {
+    const imageParts = sopImages.map(img => ({
+      inline_data: { mime_type: img.mimeType, data: img.base64 }
+    }));
+    contents.push({
+      role: 'user',
+      parts: [
+        { text: `Berikut adalah gambar-gambar yang tertanam dalam dokumen SOP (${sopImages.map(i => i.ref).join(', ')}). Gunakan sebagai referensi visual saat relevan dengan pertanyaan staf.` },
+        ...imageParts,
+      ],
+    });
+    contents.push({
+      role: 'model',
+      parts: [{ text: 'Baik, saya akan menggunakan gambar-gambar SOP tersebut sebagai referensi visual saat menjawab.' }],
+    });
+  }
+
   for (const turn of chatHistory) {
     contents.push({
       role: turn.role === 'user' ? 'user' : 'model',
