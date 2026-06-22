@@ -16,6 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
 <!-- PDF.js — lets the browser read text out of PDF files -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1025,6 +1026,55 @@ async function extractPdfText(arrayBuffer) {
   return fullText.trim();
 }
 
+// ─── Extract text directly from a .docx file using mammoth.js ───────
+// Reads the Word document's own XML structure — no PDF export step in
+// between, so headings, bold, and layout don't drift the way they can
+// after a Word → PDF → re-extract round trip. Embedded images are noted
+// inline as a marker (not sent to Gemini — this build is text-only,
+// matching how PDFs are handled here too).
+async function extractDocxText(arrayBuffer) {
+  if (!window.mammoth) {
+    throw new Error('Word document reader failed to load (check your internet connection).');
+  }
+
+  let imgCounter = 0;
+  const result = await mammoth.convertToHtml(
+    { arrayBuffer },
+    {
+      convertImage: mammoth.images.imgElement(async () => {
+        imgCounter += 1;
+        // Empty src — we only need the image's position marked in the
+        // text, not the image itself rendered or sent anywhere.
+        return { src: '', alt: `[GAMBAR_REF:${imgCounter}]` };
+      }),
+    }
+  );
+
+  if (result.messages && result.messages.length) {
+    const warnings = result.messages.filter(m => m.type === 'warning');
+    if (warnings.length) console.warn('mammoth.js conversion warnings:', warnings.map(w => w.message));
+  }
+
+  // Walk the generated HTML and turn it into plain text, replacing each
+  // image with an inline marker at the position it actually appeared in
+  // the document (so the SOP text still reads in original order).
+  const doc = new DOMParser().parseFromString(result.value, 'text/html');
+  doc.querySelectorAll('img').forEach(img => {
+    const alt = img.getAttribute('alt') || '';
+    const m = alt.match(/^\[GAMBAR_REF:(\d+)\]$/);
+    const label = m ? `Gambar ${m[1]}` : 'Gambar';
+    const marker = doc.createTextNode(`\n[${label} tersedia di dokumen SOP — referensi visual tidak dimuat]\n`);
+    img.replaceWith(marker);
+  });
+  // Add line breaks after block-level elements so paragraphs/headings/list
+  // items don't all run together once we strip down to plain text.
+  doc.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, tr').forEach(el => {
+    el.insertAdjacentText('beforeend', '\n');
+  });
+
+  return doc.body.textContent.replace(/\n{3,}/g, '\n\n').trim();
+}
+
 // ─── Google Drive helpers ───────────────────────────────────────────
 // Pull the file ID out of the many Google Drive URL shapes.
 function extractDriveId(url) {
@@ -1057,18 +1107,24 @@ async function loadFromDrive(shareUrl, apiKey) {
   }
 
   const buf = await res.arrayBuffer();
-  // Guard: if Drive returned an HTML error page instead of a PDF.
-  const head = new Uint8Array(buf.slice(0, 5));
-  const sig  = String.fromCharCode(...head);
-  if (!sig.startsWith('%PDF')) {
-    // Could be a text/markdown file shared from Drive — try decoding as text.
-    const asText = new TextDecoder().decode(buf);
-    if (/<html|<!doctype/i.test(asText.slice(0, 200))) {
-      throw new Error('Drive returned a web page, not a file. Re-check sharing settings.');
-    }
-    return asText;
+  const head = new Uint8Array(buf.slice(0, 4));
+
+  // %PDF
+  if (head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46) {
+    return await extractPdfText(buf);
   }
-  return await extractPdfText(buf);
+
+  // PK\x03\x04 — .docx (Office Open XML) is a zip file with this signature
+  if (head[0] === 0x50 && head[1] === 0x4B && (head[2] === 0x03 || head[2] === 0x05 || head[2] === 0x07)) {
+    return await extractDocxText(buf);
+  }
+
+  // Neither — try as plain text/markdown
+  const asText = new TextDecoder().decode(buf);
+  if (/<html|<!doctype/i.test(asText.slice(0, 200))) {
+    throw new Error('Drive returned a web page, not a file. Re-check sharing settings. (Note: native Google Docs must be exported as .docx or PDF first — File → Download in Google Docs.)');
+  }
+  return asText;
 }
 
 // ─── Load SOP (Drive → local file → built-in fallback) ──────────────
@@ -1093,7 +1149,8 @@ async function loadSOP() {
   // (B) Local file in the same folder
   const fileName = SOP_FILE_PATH.split('/').pop();
   sopFileLabel.textContent = fileName;
-  const isPdf = /\.pdf$/i.test(SOP_FILE_PATH);
+  const isPdf  = /\.pdf$/i.test(SOP_FILE_PATH);
+  const isDocx = /\.docx$/i.test(SOP_FILE_PATH);
 
   try {
     const res = await fetch(encodeURI(SOP_FILE_PATH));
@@ -1103,6 +1160,9 @@ async function loadSOP() {
     if (isPdf) {
       const buf = await res.arrayBuffer();
       text = await extractPdfText(buf);
+    } else if (isDocx) {
+      const buf = await res.arrayBuffer();
+      text = await extractDocxText(buf);
     } else {
       text = await res.text();
     }
