@@ -1271,16 +1271,32 @@ function applyLoadedSOP(text, fileName, images = []) {
     : `✅ SOP loaded from "${fileName}" — ready to assist.`;
   buildSidebarFromSOP(text);
 
-  // Upload images to the server once. The server stores them keyed by
-  // session and attaches them to Gemini requests server-side, so the
-  // client never needs to resend large image payloads on every message.
+  // Upload images to the server in small batches so we never hit
+  // Railway's proxy request-size limit (~4.5MB). Each batch carries
+  // ~5 images; the server appends them, so order is preserved.
   if (images.length > 0) {
-    fetch('/api/sop-images', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ images }),
-    }).catch(err => console.warn('Could not upload SOP images to server:', err.message));
+    const BATCH_SIZE = 5;
+    (async () => {
+      for (let i = 0; i < images.length; i += BATCH_SIZE) {
+        const batch = images.slice(i, i + BATCH_SIZE);
+        try {
+          const res = await fetch('/api/sop-images', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ images: batch, reset: i === 0 }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.warn(`SOP image batch ${i}–${i + batch.length} failed:`, err.error || res.status);
+            break;
+          }
+        } catch (err) {
+          console.warn(`Could not upload SOP image batch ${i}–${i + batch.length}:`, err.message);
+          break;
+        }
+      }
+    })();
   }
 }
 
