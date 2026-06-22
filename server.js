@@ -117,7 +117,7 @@ app.post('/api/login', (req, res) => {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60 * 12, // 12 hours
+    maxAge: 1000 * 60 * 60, // 1 hour
   });
 
   res.json({ ok: true });
@@ -141,10 +141,10 @@ app.get('/api/session', (req, res) => {
 // on every message (which would hit Railway's proxy request-size limit).
 const sopImageStore = new Map(); // sessionToken -> [{ ref, mimeType, base64 }]
 
-// Periodically evict stale image sets (older than 13 hours, just past
+// Periodically evict stale image sets (older than 2 hours, just past
 // the session lifetime) so memory doesn't grow forever.
 setInterval(() => {
-  const cutoff = Date.now() - 13 * 60 * 60 * 1000;
+  const cutoff = Date.now() - 2 * 60 * 60 * 1000;
   for (const [key] of sopImageStore.entries()) {
     const [, ts] = key.split('.');
     if (Number(ts) < cutoff) sopImageStore.delete(key);
@@ -208,7 +208,13 @@ app.post('/api/chat', requireAuth, rateLimit, async (req, res) => {
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemPrompt || '' }] },
         contents: finalContents,
-        generationConfig: { temperature: 0.35, topK: 40, topP: 0.9, maxOutputTokens: 1200 },
+        generationConfig: {
+          temperature: 0.35,
+          topK: 40,
+          topP: 0.9,
+          maxOutputTokens: 4096,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
         safetySettings: [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
