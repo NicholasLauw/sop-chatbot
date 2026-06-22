@@ -993,12 +993,42 @@ if (GDRIVE_SOP_URL) {
 }
 
 // ─── Extract text from a PDF (ArrayBuffer) using PDF.js ─────────────
-async function extractPdfText(arrayBuffer) {
+async function pageHasImage(page) {
+  if (!window.pdfjsLib) return false;
+  const { OPS } = pdfjsLib;
+  const imageOps = new Set([OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject]);
+  const opList = await page.getOperatorList();
+  return opList.fnArray.some(fn => imageOps.has(fn));
+}
+
+// Render a page to a compact JPEG (base64, no data: prefix) for Gemini vision.
+// Capped at ~1100px on the long edge to keep per-image token cost reasonable.
+async function renderPageToJpeg(page) {
+  const baseViewport = page.getViewport({ scale: 1 });
+  const maxDim = 1100;
+  const scale = Math.min(2, maxDim / Math.max(baseViewport.width, baseViewport.height));
+  const viewport = page.getViewport({ scale: Math.max(scale, 0.5) });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d');
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+  return dataUrl.split(',')[1]; // strip "data:image/jpeg;base64,"
+}
+
+// Hard cap on PDF image pages sent per request. Pages with the least
+// extractable text get priority — for those the image IS the content.
+const MAX_SOP_IMAGES = 60;
+
+// Extract text + images from a PDF. For each page we detect embedded
+// image operators; pages with images get rendered to JPEG for Gemini vision.
+async function extractPdfContent(arrayBuffer) {
   if (!window.pdfjsLib) {
     throw new Error('PDF reader failed to load (check your internet connection).');
   }
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let fullText = '';
+  const pageData = [];
 
   for (let p = 1; p <= pdf.numPages; p++) {
     const page    = await pdf.getPage(p);
@@ -1008,23 +1038,59 @@ async function extractPdfText(arrayBuffer) {
     let lines = [];
     let line  = '';
     let lastY = null;
+    let textLen = 0;
 
     for (const item of content.items) {
       const y = item.transform[5];
-      if (lastY !== null && Math.abs(y - lastY) > 3) {
-        lines.push(line.trim());
-        line = '';
-      }
+      if (lastY !== null && Math.abs(y - lastY) > 3) { lines.push(line.trim()); line = ''; }
       line += item.str;
+      textLen += item.str.length;
       if (item.hasEOL) { lines.push(line.trim()); line = ''; }
       lastY = y;
     }
     if (line.trim()) lines.push(line.trim());
 
+    let hasImage = false;
+    try { hasImage = await pageHasImage(page); }
+    catch (err) { console.warn(`Could not check page ${p} for images:`, err.message); }
+
+    pageData.push({ page: p, pageObj: page, lines, hasImage, textLen });
+  }
+
+  // Prioritise image pages with least text (those pages rely on the image most)
+  const imagePages = pageData.filter(pd => pd.hasImage);
+  const sorted = [...imagePages].sort((a, b) => a.textLen - b.textLen);
+  const toRender = new Set(sorted.slice(0, MAX_SOP_IMAGES).map(pd => pd.page));
+  if (imagePages.length > MAX_SOP_IMAGES) {
+    console.warn(`SOP has ${imagePages.length} image pages; only sending the ${MAX_SOP_IMAGES} highest-priority ones.`);
+  }
+
+  let fullText = '';
+  const images = [];
+
+  for (const pd of pageData) {
+    const lines = pd.lines;
+    if (pd.hasImage && toRender.has(pd.page)) {
+      try {
+        const base64 = await renderPageToJpeg(pd.pageObj);
+        images.push({ ref: `Halaman ${pd.page}`, mimeType: 'image/jpeg', base64 });
+        lines.push(`[Gambar tersedia di halaman ${pd.page} — lihat lampiran visual SOP]`);
+      } catch (err) {
+        console.warn(`Could not render page ${pd.page} as image:`, err.message);
+      }
+    } else if (pd.hasImage) {
+      lines.push(`[Gambar tersedia di halaman ${pd.page} — tidak dimuat ke asisten karena batas jumlah gambar]`);
+    }
     fullText += lines.join('\n') + '\n\n';
   }
 
-  return fullText.trim();
+  return { text: fullText.trim(), images };
+}
+
+// Back-compat wrapper — used by the local-file PDF path.
+async function extractPdfText(arrayBuffer) {
+  const { text } = await extractPdfContent(arrayBuffer);
+  return text;
 }
 
 // ─── Extract text + images directly from a .docx file using mammoth.js ──
@@ -1124,8 +1190,7 @@ async function loadFromDrive(shareUrl, apiKey) {
 
   // %PDF
   if (head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46) {
-    const text = await extractPdfText(buf);
-    return { text, images: [] };
+    return await extractPdfContent(buf);
   }
 
   // PK\x03\x04 — .docx (Office Open XML) is a zip file with this signature
@@ -1174,7 +1239,7 @@ async function loadSOP() {
     let images = [];
     if (isPdf) {
       const buf = await res.arrayBuffer();
-      text = await extractPdfText(buf);
+      ({ text, images } = await extractPdfContent(buf));
     } else if (isDocx) {
       const buf = await res.arrayBuffer();
       ({ text, images } = await extractDocxText(buf));
