@@ -153,13 +153,18 @@ setInterval(() => {
 
 // ── SOP images upload endpoint ────────────────────────────────────────
 app.post('/api/sop-images', requireAuth, (req, res) => {
-  const { images } = req.body || {};
+  const { images, reset } = req.body || {};
   const token = req.cookies && req.cookies.session;
   if (!Array.isArray(images)) {
     return res.status(400).json({ error: 'images must be an array' });
   }
-  sopImageStore.set(token, images);
-  res.json({ ok: true, count: images.length });
+  // reset=true clears previous images (sent with first batch).
+  // Subsequent batches append, so large docx image sets can be
+  // uploaded in small chunks without hitting Railway's proxy size limit.
+  const existing = reset ? [] : (sopImageStore.get(token) || []);
+  const merged = existing.concat(images);
+  sopImageStore.set(token, merged);
+  res.json({ ok: true, count: merged.length });
 });
 
 // ── Chat endpoint (proxies to Gemini, requires auth) ──────────────────
