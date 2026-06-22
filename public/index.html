@@ -804,7 +804,7 @@
 //     it's a different key from your Gemini key and is lower-risk to
 //     keep client-side, but you can also move it server-side later
 //     the same way the Gemini key was moved.
-const GDRIVE_SOP_URL      = 'https://docs.google.com/document/d/14cIrT_o1yrMf3kRLx12s5zevR_uBY11x/edit?usp=sharing&ouid=104345983185194981728&rtpof=true&sd=true';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
+const GDRIVE_SOP_URL      = 'https://drive.google.com/file/d/1tqUU7j5MUOylljwogaWBy2xfo7ZRioi7/view?usp=sharing';   // e.g. 'https://drive.google.com/file/d/FILEID/view?usp=sharing'
 const GOOGLE_DRIVE_API_KEY = 'AIzaSyB4kizpSH2DiJB7LQ3iNYGC2DwFn6t9ku8';  // e.g. 'AIzaSy...'
 
 // (B) LOCAL FILE — a PDF/TXT/MD sitting in the SAME FOLDER as this HTML.
@@ -1124,7 +1124,8 @@ async function loadFromDrive(shareUrl, apiKey) {
 
   // %PDF
   if (head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46) {
-    return await extractPdfText(buf);
+    const text = await extractPdfText(buf);
+    return { text, images: [] };
   }
 
   // PK\x03\x04 — .docx (Office Open XML) is a zip file with this signature
@@ -1197,7 +1198,6 @@ async function loadSOP() {
 // ─── Apply a successfully loaded SOP to state + UI ──────────────────
 function applyLoadedSOP(text, fileName, images = []) {
   sopContent = text;
-  sopImages  = images;
   sopDot.className = 'dot loaded';
   sopLabel.textContent = `SOP loaded · ${fileName}`;
   sopFileLabel.textContent = fileName;
@@ -1205,6 +1205,18 @@ function applyLoadedSOP(text, fileName, images = []) {
     ? `✅ SOP loaded from "${fileName}" — ready to assist. (🖼️ ${images.length} gambar dimuat sebagai referensi visual)`
     : `✅ SOP loaded from "${fileName}" — ready to assist.`;
   buildSidebarFromSOP(text);
+
+  // Upload images to the server once. The server stores them keyed by
+  // session and attaches them to Gemini requests server-side, so the
+  // client never needs to resend large image payloads on every message.
+  if (images.length > 0) {
+    fetch('/api/sop-images', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ images }),
+    }).catch(err => console.warn('Could not upload SOP images to server:', err.message));
+  }
 }
 
 // ─── Parse SOP headings for sidebar ────────────────────────────────
@@ -1333,27 +1345,6 @@ RESPONSE FORMAT:
 SCOPE: Only answer questions related to hotel operations, guest services, or staff conduct.`;
 
   const contents = [];
-
-  // If images were extracted from the SOP, prepend them as a reference turn
-  // so Gemini can see them when answering. The API is stateless so they must
-  // be resent every message, same as the SOP text already is.
-  if (sopImages.length > 0) {
-    const imageParts = sopImages.map(img => ({
-      inline_data: { mime_type: img.mimeType, data: img.base64 }
-    }));
-    contents.push({
-      role: 'user',
-      parts: [
-        { text: `Berikut adalah gambar-gambar yang tertanam dalam dokumen SOP (${sopImages.map(i => i.ref).join(', ')}). Gunakan sebagai referensi visual saat relevan dengan pertanyaan staf.` },
-        ...imageParts,
-      ],
-    });
-    contents.push({
-      role: 'model',
-      parts: [{ text: 'Baik, saya akan menggunakan gambar-gambar SOP tersebut sebagai referensi visual saat menjawab.' }],
-    });
-  }
-
   for (const turn of chatHistory) {
     contents.push({
       role: turn.role === 'user' ? 'user' : 'model',
