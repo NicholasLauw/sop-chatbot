@@ -1540,8 +1540,8 @@ function formatBotText(raw) {
       continue;
     }
 
-    // Sub-heading: "○ Inspeksi Harian:" or standalone "**Label:**"
-    if (/^[○◦] /.test(line) || /^\*\*[^*]+:\*\*\s*$/.test(line)) {
+    // Sub-heading: only explicit ○ / ◦ prefixed lines
+    if (/^[○◦] /.test(line)) {
       insideSubheading = true;
       const content = bold(line.replace(/^[○◦] /,''));
       out.push(`<p class="sub-heading">${content}</p>`);
